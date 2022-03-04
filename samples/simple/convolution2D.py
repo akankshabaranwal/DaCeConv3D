@@ -33,17 +33,6 @@ import dace.libraries.blas
 rows = dace.symbol('rows')
 cols = dace.symbol('cols')
 w = dace.symbol('w')
-tmpii = dace.symbol('tmpii')
-tmpjj = dace.symbol('tmpjj')
-wCenter = dace.symbol('wCenter')
-rowsEnd = dace.symbol('rowsEnd')
-colsEnd = dace.symbol('colsEnd')
-ow = dace.symbol('ow')
-ii = dace.symbol('ii')
-jj = dace.symbol('jj')
-mm = dace.symbol('mm')
-nn = dace.symbol('nn')
-k = dace.symbol('k')
 
 # Define data type to use
 dtype = dace.float64
@@ -52,24 +41,13 @@ np_dtype = np.float64
 # Simple unoptimized convolution code
 @dace.program
 def convolution2D(Input: dtype[rows, cols], kernel: dtype[w, w], Output: dtype[rows, cols]):
-    tmpii = w/2 + 1
-    tmpjj = w/2 + 1
-    wCenter = w / 2
-    rowsEnd = rows - wCenter
-    colsEnd = cols - wCenter
-    ow = w*w
-
-    tmp = np.ndarray([rows,cols,ow], dtype = Input.dtype)
-    for i, j, m, n in dace.map[wCenter:rowsEnd, wCenter:colsEnd, 0:w, 0:w]:
+    tmp = np.zeros([rows, cols, w*w], dtype = Input.dtype)
+    for i,j,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2, 0:w, 0:w]:
         with dace.tasklet:
-            ii = i - tmpii - m
-            jj = j - tmpjj - n
-            mm = w - 1 - m
-            nn = w - 1 - n
-            k = m * w + w
-            in_A << Input[ii][jj]
-            in_B << kernel[mm][nn]
-            out >> tmp[i, j, k]
+            in_A << Input[i - w/2 - 1 - m, j - w/2 -1 - n]
+            in_B << kernel[w - 1 - m, w - 1 - n]
+            out >> tmp[i, j, m*w+n]
+
             out = in_A * in_B
 
     dace.reduce(lambda a,b:a+b, tmp, Output, axis=2, identity=0)
