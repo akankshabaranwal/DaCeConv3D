@@ -23,11 +23,32 @@ for (i = 0; i < rows; ++i) // rows  {
 }
 '''
 
+# //CPU function: conv_img_cpu
+# //Parameters: float *img, float *kernel, float *imgf, int Nx, int Ny, int kernel_size
+# //center: center of kernel
+#   for (int i = center; i<(Ny-center); i++)
+#     for (int j = center; j<(Nx-center); j++){
+#         //Convolution Operator:
+#         sum = 0;
+#         for (int ki = 0; ki<kernel_size; ki++)
+#            for (int kj = 0; kj<kernel_size; kj++){
+#                ii = j + kj - center;
+#                jj = i + ki - center;
+#                sum+=img[jj*Nx+ii]*kernel[ki*kernel_size + kj];
+#                }
+#         imgf[i*Nx +j] = sum;
+#         }
+#
+
+
 import click
 import dace
 import numpy as np
 
 import dace.libraries.blas
+
+# TODO: Add stride padding parameters
+# TODO: Modify the code for more dimensions
 
 # Define symbolic sizes for arbitrary inputs
 rows = dace.symbol('rows')
@@ -44,14 +65,13 @@ def convolution2D(Input: dtype[rows, cols], kernel: dtype[w, w], Output: dtype[r
     tmp = np.zeros([rows, cols, w*w], dtype = Input.dtype)
     for i,j,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2, 0:w, 0:w]:
         with dace.tasklet:
-            in_A << Input[i - w/2 - 1 - m, j - w/2 -1 - n]
-            in_B << kernel[w - 1 - m, w - 1 - n]
+            in_A << Input[i - w/2 + m, j - w/2 + n]
+            in_B << kernel[ w-1-m, w-1-n]
             out >> tmp[i, j, m*w+n]
 
             out = in_A * in_B
 
     dace.reduce(lambda a,b:a+b, tmp, Output, axis=2, identity=0)
-
 
 # Normal code for reference
 def refconvolution2D(Input, kernel):
@@ -59,8 +79,8 @@ def refconvolution2D(Input, kernel):
     Refw = kernel.shape[0]
     Refrows = Input.shape[0]
     Refcols = Input.shape[1]
-    Reftmpii = np.int_(Refw/2 + 1)
-    Reftmpjj = np.int_(Refw/2 + 1)
+    Reftmpii = np.int_(Refw/2)
+    Reftmpjj = np.int_(Refw/2)
     RefwCenter = np.int_(Refw / 2)
     RefrowsEnd = Refrows - RefwCenter
     RefcolsEnd = Refcols - RefwCenter
@@ -68,10 +88,10 @@ def refconvolution2D(Input, kernel):
         for j in range(RefwCenter, RefcolsEnd):
             RefOutput[i,j] = 0
             for m in range(0,Refw):
-                Refii = i - Reftmpii - m
+                Refii = i - Reftmpii + m
                 Refmm = Refw - 1 - m
                 for n in range(0,Refw):
-                    Refjj = j - Reftmpjj - n
+                    Refjj = j - Reftmpjj + n
                     Refnn = Refw - 1 - n
                     RefOutput[i,j] += Input[Refii][Refjj]*kernel[Refmm][Refnn]
     return RefOutput
@@ -81,9 +101,9 @@ def refconvolution2D(Input, kernel):
 # Main function
 
 @click.command()
-@click.option('-rows', type=int, default=5)
-@click.option('-cols', type=int, default=5)
-@click.option('-w', type=int, default=2)
+@click.option('-rows', type=int, default=7)
+@click.option('-cols', type=int, default=7)
+@click.option('-w', type=int, default=3)
 @click.option('--version',
               type=click.Choice(
                   ('unoptimized','reference')),
@@ -100,6 +120,11 @@ def cli(rows, cols, w, version, verify):
     kernel = np.random.rand(w, w).astype(np_dtype)
     Output = np.zeros((rows, cols), dtype=np_dtype)
 
+    # # Prepare data with numpy for debug
+    # Input = np.ones((rows, cols), dtype = np_dtype)
+    # kernel = np.ones((w, w), dtype = np_dtype)
+    # Output = np.zeros((rows, cols), dtype=np_dtype)
+
     print(f'Convolution 2D {rows}x{cols}x{1} with kernel {w}x{w}(version: {version})')
 
     if version == 'unoptimized':
@@ -110,7 +135,11 @@ def cli(rows, cols, w, version, verify):
         raise ValueError('Invalid version %s' % version)
 
     if verify:
+        print("Computed from dace")
+        print(Output)
         expected = refconvolution2D(Input, kernel)
+        print("Computed reference")
+        print(expected)
         diff = np.linalg.norm(Output - expected) / (rows * cols)
         print('Difference:', diff)
         return 0 if diff <= 1e-6 else 1
