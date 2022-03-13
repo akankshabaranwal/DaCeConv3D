@@ -52,11 +52,54 @@ def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[o
         dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
 
 
+# Reducing memory footprint
+@dace.program
+def convolutionindepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    for od in range(0,outdepth):
+        tmp = np.zeros([rows, cols, indepth * w * w], dtype=Input.dtype)
+        for i,j,d,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth, 0:w, 0:w]:
+            with dace.tasklet:
+                in_A << Input[d, i - w/2 + m, j - w/2 + n]
+                in_B << kernel[od, d, w-1-m, w-1-n]
+                out >> tmp[ i, j, (d*(w*w)) + (m*w)+n]
+
+                out = in_A * in_B
+
+        dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
+
+
+# No map reduce. Not working!!. Output is all zeros
+@dace.program
+def convolutionsimple(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    Output = np.zeros([outdepth, rows, cols], dtype = Input.dtype)
+    for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
+        with dace.tasklet:
+            in_A << Input[d, i - w / 2 + m, j - w / 2 + n]
+            in_B << kernel[od, d, w - 1 - m, w - 1 - n]
+            out >> Output[od, i, j]
+
+            out += in_A * in_B
+
+
+# Reduction along input depth
+@dace.program
+def convolutionindepthreduce(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    for i, j, od in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:outdepth]:
+        tmp = np.zeros([indepth*w*w], dtype = Input.dtype)
+        for d,m,n in dace.map[0:indepth,0:w,0:w]:
+            with dace.tasklet:
+                in_A << Input[d, i - w / 2 + m, j - w / 2 + n]
+                in_B << kernel[od, d, w - 1 - m, w - 1 - n]
+                out >> tmp[(d*(w*w)) + (m*w)+n]
+
+                out = in_A * in_B
+        Output[od][i][j] = dace.reduce(lambda a, b: a + b, tmp, identity=0)
+
 
 # Normal code for reference
 def refconvolution(Input, kernel):
 
-    Refw = kernel.shape[1]
+    Refw = kernel.shape[2]
     Refrows = Input.shape[1]
     Refcols = Input.shape[2]
     Refindepth = Input.shape[0]
@@ -85,15 +128,15 @@ def refconvolution(Input, kernel):
 # Main function
 
 @click.command()
-@click.option('-rows', type=int, default=7)
-@click.option('-cols', type=int, default=7)
-@click.option('-indepth', type=int, default=3)
+@click.option('-rows', type=int, default=8)
+@click.option('-cols', type=int, default=8)
+@click.option('-indepth', type=int, default=5)
 @click.option('-outdepth', type=int, default=10)
-@click.option('-w', type=int, default=3)
+@click.option('-w', type=int, default=5)
 @click.option('--version',
               type=click.Choice(
-                  ('allparallel','outdepthserial','reference')),
-              default='allparallel')
+                  ('allparallel','outdepthserial','indepthreduce','simple','reference')),
+              default='indepthreduce')
 @click.option('--verify/--no-verify', default=True)
 def cli(rows, cols, indepth, outdepth, w, version, verify):
     """
@@ -106,11 +149,6 @@ def cli(rows, cols, indepth, outdepth, w, version, verify):
     kernel = np.random.rand(outdepth, indepth, w, w).astype(np_dtype)
     Output = np.zeros((outdepth, rows, cols), dtype=np_dtype)
 
-    # # Prepare data with numpy for debug
-    # Input = np.ones((rows, cols), dtype = np_dtype)
-    # kernel = np.ones((w, w), dtype = np_dtype)
-    # Output = np.zeros((rows, cols), dtype=np_dtype)
-
     print(f'Convolution {rows}x{cols}x{indepth} with kernel {outdepth}x{w}x{w}x{indepth}(version: {version})')
 
     if version == 'allparallel':
@@ -118,11 +156,19 @@ def cli(rows, cols, indepth, outdepth, w, version, verify):
         convolutionallparallel(Input, kernel, Output)
     elif version == 'outdepthserial':
         convolutionoutdepthserial(Input, kernel, Output)
+    elif version == 'indepthreduce':
+        convolutionindepthreduce(Input, kernel, Output)
+    elif version == 'simple':
+        convolutionsimple(Input, kernel, Output)
     else:
         raise ValueError('Invalid version %s' % version)
 
     if verify:
+        #print("From dace:")
+        #print(Output)
         expected = refconvolution(Input, kernel)
+        #print("From reference")
+        #print(expected)
         diff = np.linalg.norm(Output - expected) / (rows * cols * outdepth)
         print('Difference:', diff)
         return 0 if diff <= 1e-6 else 1
