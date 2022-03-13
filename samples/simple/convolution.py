@@ -21,9 +21,9 @@ w = dace.symbol('w')
 dtype = dace.float64
 np_dtype = np.float64
 
-# Simple unoptimized convolution code
+# Simple convolution code using map reduce approach
 @dace.program
-def convolution(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+def convolutionallparallel(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
     tmp = np.zeros([outdepth, rows, cols, indepth*w*w], dtype = Input.dtype)
     for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
         with dace.tasklet:
@@ -34,6 +34,23 @@ def convolution(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indep
             out = in_A * in_B
 
     dace.reduce(lambda a,b:a+b, tmp, Output, axis=3, identity=0)
+
+
+# Reducing memory footprint
+@dace.program
+def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    for od in range(0,outdepth):
+        tmp = np.zeros([rows, cols, indepth * w * w], dtype=Input.dtype)
+        for i,j,d,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth, 0:w, 0:w]:
+            with dace.tasklet:
+                in_A << Input[d, i - w/2 + m, j - w/2 + n]
+                in_B << kernel[od, d, w-1-m, w-1-n]
+                out >> tmp[ i, j, (d*(w*w)) + (m*w)+n]
+
+                out = in_A * in_B
+
+        dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
+
 
 
 # Normal code for reference
@@ -75,8 +92,8 @@ def refconvolution(Input, kernel):
 @click.option('-w', type=int, default=3)
 @click.option('--version',
               type=click.Choice(
-                  ('unoptimized','reference')),
-              default='unoptimized')
+                  ('allparallel','outdepthserial','reference')),
+              default='allparallel')
 @click.option('--verify/--no-verify', default=True)
 def cli(rows, cols, indepth, outdepth, w, version, verify):
     """
@@ -96,19 +113,16 @@ def cli(rows, cols, indepth, outdepth, w, version, verify):
 
     print(f'Convolution {rows}x{cols}x{indepth} with kernel {outdepth}x{w}x{w}x{indepth}(version: {version})')
 
-    if version == 'unoptimized':
-        # print("skipped call")
+    if version == 'allparallel':
         # Simply call the program to run it
-        convolution(Input, kernel, Output)
+        convolutionallparallel(Input, kernel, Output)
+    elif version == 'outdepthserial':
+        convolutionoutdepthserial(Input, kernel, Output)
     else:
         raise ValueError('Invalid version %s' % version)
 
     if verify:
-        #print("Computed from dace")
-        #print(Output)
         expected = refconvolution(Input, kernel)
-        #print("Computed reference")
-        #print(expected)
         diff = np.linalg.norm(Output - expected) / (rows * cols * outdepth)
         print('Difference:', diff)
         return 0 if diff <= 1e-6 else 1
