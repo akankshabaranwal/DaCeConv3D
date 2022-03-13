@@ -52,22 +52,6 @@ def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[o
         dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
 
 
-# Reducing memory footprint
-@dace.program
-def convolutionindepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
-    for od in range(0,outdepth):
-        tmp = np.zeros([rows, cols, indepth * w * w], dtype=Input.dtype)
-        for i,j,d,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth, 0:w, 0:w]:
-            with dace.tasklet:
-                in_A << Input[d, i - w/2 + m, j - w/2 + n]
-                in_B << kernel[od, d, w-1-m, w-1-n]
-                out >> tmp[ i, j, (d*(w*w)) + (m*w)+n]
-
-                out = in_A * in_B
-
-        dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
-
-
 # No map reduce. Not working!!. Output is all zeros
 @dace.program
 def convolutionsimple(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
