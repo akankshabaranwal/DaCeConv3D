@@ -52,17 +52,24 @@ def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[o
         dace.reduce(lambda a,b:a+b, tmp, Output[od][:][:], axis=2, identity=0)
 
 
-# No map reduce. Not working!!. Output is all zeros
+# Simple convolution
 @dace.program
-def convolutionsimple(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
-    Output = np.zeros([outdepth, rows, cols], dtype = Input.dtype)
-    for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
+def convolutionsimple1(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    Output[:] = 0
+    for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2, 0:indepth, 0:outdepth, 0:w, 0:w]:
         with dace.tasklet:
             in_A << Input[d, i - w / 2 + m, j - w / 2 + n]
             in_B << kernel[od, d, w - 1 - m, w - 1 - n]
             out >> Output[od, i, j]
-
             out += in_A * in_B
+
+
+# Simple convolution
+@dace.program
+def convolutionsimple2(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
+    Output[:] = 0
+    for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
+            Output[od, i, j] += Input[d, i - w / 2 + m, j - w / 2 + n] * kernel[od, d, w - 1 - m, w - 1 - n]
 
 
 # Reduction along input depth
@@ -119,8 +126,8 @@ def refconvolution(Input, kernel):
 @click.option('-w', type=int, default=5)
 @click.option('--version',
               type=click.Choice(
-                  ('allparallel','outdepthserial','indepthreduce','simple','reference')),
-              default='indepthreduce')
+                  ('allparallel','outdepthserial','indepthreduce','simple1','simple2','reference')),
+              default='simple2')
 @click.option('--verify/--no-verify', default=True)
 def cli(rows, cols, indepth, outdepth, w, version, verify):
     """
@@ -142,8 +149,10 @@ def cli(rows, cols, indepth, outdepth, w, version, verify):
         convolutionoutdepthserial(Input, kernel, Output)
     elif version == 'indepthreduce':
         convolutionindepthreduce(Input, kernel, Output)
-    elif version == 'simple':
-        convolutionsimple(Input, kernel, Output)
+    elif version == 'simple1':
+        convolutionsimple1(Input, kernel, Output)
+    elif version == 'simple2':
+        convolutionsimple2(Input, kernel, Output)
     else:
         raise ValueError('Invalid version %s' % version)
 
