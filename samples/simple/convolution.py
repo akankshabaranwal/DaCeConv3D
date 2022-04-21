@@ -24,9 +24,9 @@ w = dace.symbol('w')
 # Define data type to use
 dtype = dace.float64
 np_dtype = np.float64
-
+#x = dace.DeviceType.GPU
 # Simple convolution code using map reduce approach
-@dace.program
+@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
 def convolutionallparallel(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
     tmp = np.zeros([outdepth, rows, cols, indepth*w*w], dtype = Input.dtype)
     for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
@@ -41,7 +41,7 @@ def convolutionallparallel(Input: dtype[indepth, rows, cols], kernel: dtype[outd
 
 
 # Reducing memory footprint
-@dace.program
+@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
 def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
     for od in range(0,outdepth):
         tmp = np.zeros([rows, cols, indepth * w * w], dtype=Input.dtype)
@@ -57,7 +57,7 @@ def convolutionoutdepthserial(Input: dtype[indepth, rows, cols], kernel: dtype[o
 
 
 # Simple convolution
-@dace.program
+@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
 def convolutionsimple(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
     Output[:] = 0
     for i,j,d,od,m,n in dace.map[w/2:rows-w/2, w/2:cols-w/2,0:indepth,0:outdepth, 0:w, 0:w]:
@@ -65,7 +65,7 @@ def convolutionsimple(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth,
 
 
 # Reduction along input depth
-@dace.program
+@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
 def convolutionindepthreduce(Input: dtype[indepth, rows, cols], kernel: dtype[outdepth, indepth, w, w], Output: dtype[outdepth, rows, cols]):
     for i, j, od in dace.map[w/2:rows-w/2, w/2:cols-w/2, 0:outdepth]:
         tmp = np.zeros([indepth*w*w], dtype = Input.dtype)
@@ -80,7 +80,7 @@ def convolutionindepthreduce(Input: dtype[indepth, rows, cols], kernel: dtype[ou
 
 
 # Split into parallel and non parallel maps
-@dace.program
+@dace.program(device=dace.DeviceType.GPU)
 def convolutionsimpleparallel(Input: dtype[indepth, rows, cols],
                               kernel: dtype[outdepth, indepth, w, w],
                               Output: dtype[outdepth, rows, cols]
@@ -95,7 +95,7 @@ def convolutionsimpleparallel(Input: dtype[indepth, rows, cols],
 
 
 # Block parallel computation
-@dace.program
+@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
 def convolutionblockparallel(Input: dtype[indepth, rows, cols],kernel: dtype[outdepth, indepth, w, w],Output: dtype[outdepth, rows, cols],
                              chunklength
                               ):
@@ -240,8 +240,8 @@ def cli(rows, cols, indepth, outdepth, w, version, verify):
         raise ValueError('Invalid version %s' % version)
 
     if verify:
-       # pprint("From block:")
-       # Output = refblockconvolution(Input, kernel)
+        #pprint("From block:")
+        #Output = refblockconvolution(Input, kernel)
         #pprint(Output)
         expected = refconvolution(Input, kernel)
         #pprint("From reference")
