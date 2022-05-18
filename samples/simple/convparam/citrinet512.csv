@@ -1,0 +1,5 @@
+"Kernel length","Number of filters","Dilation","Stride"
+5,512,1,1
+11,512,1,2
+39,512,1,1
+41,640,1,1

@@ -4,7 +4,6 @@ import click
 import dace
 import numpy as np
 import dace.libraries.blas
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import glob
 import os
@@ -53,18 +52,19 @@ def dace_simpleparallel(Input: dtype[inputimages, rows, cols, indepth],
         Output[0,i,j,od] = tmp
 
 # Place holder function for tf reference code for profiling.
-def timetfgpu(input, filter):
+def timetfgpu_conv2D(input, filter):
     op=tf.nn.conv2d(input, filter, strides=[1, 1, 1, 1], padding='VALID')
 
 # Verification
-def verify_with_ref(dace_fun, dace_fun_name, refop, Input, kernel, Output, Rows, Cols, W):
+def verify_with_ref_conv2D(dace_fun, dace_fun_name, refop, Input, kernel, Output, Rows, Cols, W):
     dace_fun(Input, kernel, Output)
     opdace = tf.convert_to_tensor(Output)
     opdace = opdace[:,int(W/2):Rows-int(W/2),int(W/2):Cols-int(W/2),:]
-    if(sum(sum(sum(sum(opdace-refop))))==0):
+    if(sum(sum(sum(sum(opdace-refop))))<=1e-6):
         print(f"Verification successfull for {dace_fun_name}")
     else:
-        print(f"!!! Incorrect convolution for {dace_fun_name}")
+        print(f"!!! Incorrect convolution for {dace_fun_name} with parameters:"
+              f"Rows:{Rows}, Cols: {Cols}, W: {W}")
 
 
 # Dace profiling method, Returns median values in ms
@@ -82,14 +82,14 @@ def rundaceprofiling(dace_fun, dace_fun_name, Input, kernel, Output, reps):
 
 
 # Code to run the benchmarking and verif
-def benchmarkandverifyconv2d(csv):
+def benchmarkandverifyconv2D(csv, nobenchmark):
     # Maybe write a script which goes through these csvs one by one and generates the reports for each of them
     header = ["InputDepth", "InputRow", "InputCol", "OutputDepth", "KernelRow", "KernelCol", "Stride"]
     csvfile = f'{csv}.csv'
     convparams = pd.read_csv(csvfile)
     convparams = pd.DataFrame(convparams, columns=header)
 
-    print("Running benchmark for conv2D")
+    print("Parsing conv2D parameters")
 
     # Reset index to iterate through each 2D convolution parameter from the csv file
     convparams = convparams.reset_index()
@@ -115,35 +115,110 @@ def benchmarkandverifyconv2d(csv):
         input = tf.convert_to_tensor(Input)
         filter = tf.convert_to_tensor(kernel)
         op = tf.nn.conv2d(input, filter, strides=[1, 1, 1, 1], padding="VALID")
-        verify_with_ref(dace_simpleparallel, 'dace_simpleparallel', op, Input, kernel, Output, Rows, Cols, W)
+        verify_with_ref_conv2D(dace_simpleparallel, 'dace_simpleparallel', op, Input, kernel, Output, Rows, Cols, W)
         # TODO: Maybe exit and don't run benchmarking when the verification fails?
         print("INFO: Verification done")
         # ** End Verification
 
+        if nobenchmark:
+            print("WARN: Skipping benchmarking")
+            continue
+
         # ** Start Benchmarking **
         # Warm up
         timeit.Timer(dace_simpleparallel).repeat(repeat=5, number=1)
-        timeit.Timer(lambda: timetfgpu(input, filter)).repeat(repeat=5, number=1)
+        timeit.Timer(lambda: timetfgpu_conv2D(input, filter)).repeat(repeat=5, number=1)
         print("INFO: Warmup done")
 
         # Main benchmarking
         TIMES = {}
         nrepeat = 100
         TIMES['dace_simpleparallel'] = rundaceprofiling(dace_simpleparallel, 'dace_simpleparallel', Input, kernel, Output, nrepeat)
-        x = timeit.Timer(lambda: timetfgpu(input, filter)).repeat(repeat=100, number=10)
+        x = timeit.Timer(lambda: timetfgpu_conv2D(input, filter)).repeat(repeat=100, number=2)
         TIMES['tfgpu'] = np.median(x)
         ALLPARAMSTIMES[f'{index}'] = TIMES
-        print(f"INFO: Benchmarking with params as "
+        print(f"INFO: Done benchmarking with params as "
               f"InputImages:{InputImages}, "
               f"InputRow:{Rows}, "
               f"InputCols:{Cols}, "
               f"InputDepth:{InChannels}, "
-              f"OutputDepth:{OutChannels} done")
+              f"OutputDepth:{OutChannels}, "
+              f"Kernel W:{W}")
+        print("\n\n")
 
     # TODO: Fix file name so that it corresponds to the csv file that was read
     jsonfile = f'../benchmarkout/{csv}.json'
     json.dump(ALLPARAMSTIMES, open(jsonfile, 'w'))
 
+
+# Code to run the benchmarking and verif
+def benchmarkandverifyconv1D(csv, nobenchmark):
+    # Maybe write a script which goes through these csvs one by one and generates the reports for each of them
+    header = ["InputDepth", "InputRow", "InputCol", "OutputDepth", "KernelRow", "KernelCol", "Stride"]
+    csvfile = f'{csv}.csv'
+    convparams = pd.read_csv(csvfile)
+    convparams = pd.DataFrame(convparams, columns=header)
+
+    print("Parsing conv1D parameters")
+
+    # Reset index to iterate through each 2D convolution parameter from the csv file
+    convparams = convparams.reset_index()
+
+    ALLPARAMSTIMES = {}
+    for index, currconv in convparams.iterrows():
+        # Extract parameters to prepare data for convolution
+        InputImages = 1
+        Rows = currconv["InputRow"]
+        Cols = currconv["InputCol"]
+        InChannels = currconv["InputDepth"]
+        OutChannels = currconv["OutputDepth"]
+        W = currconv["KernelRow"]
+        Stride = currconv["Stride"]
+
+        # Prepare data with numpy
+        Input = np.random.rand(InputImages, Rows, Cols, InChannels).astype(np_dtype)
+        kernel = np.random.rand(W, W, InChannels, OutChannels).astype(np_dtype)
+        Output = np.zeros((InputImages, Rows, Cols, OutChannels), dtype=np_dtype)
+
+        # ** Start Verification
+        # TODO: Fix when kernel dimension is even
+        input = tf.convert_to_tensor(Input)
+        filter = tf.convert_to_tensor(kernel)
+        op = tf.nn.conv2d(input, filter, strides=[1, 1, 1, 1], padding="VALID")
+        verify_with_ref_conv2D(dace_simpleparallel, 'dace_simpleparallel', op, Input, kernel, Output, Rows, Cols, W)
+        # TODO: Maybe exit and don't run benchmarking when the verification fails?
+        print("INFO: Verification done")
+        # ** End Verification
+
+        if nobenchmark:
+            print("WARN: Skipping benchmarking")
+            continue
+
+        # ** Start Benchmarking **
+        # Warm up
+        timeit.Timer(dace_simpleparallel).repeat(repeat=5, number=1)
+        timeit.Timer(lambda: timetfgpu_conv2D(input, filter)).repeat(repeat=5, number=1)
+        print("INFO: Warmup done")
+
+        # Main benchmarking
+        TIMES = {}
+        nrepeat = 100
+        TIMES['dace_simpleparallel'] = rundaceprofiling(dace_simpleparallel, 'dace_simpleparallel', Input, kernel, Output, nrepeat)
+        x = timeit.Timer(lambda: timetfgpu_conv2D(input, filter)).repeat(repeat=100, number=2)
+        TIMES['tfgpu'] = np.median(x)
+        ALLPARAMSTIMES[f'{index}'] = TIMES
+        print(f"INFO: Done benchmarking with params as "
+              f"InputImages:{InputImages}, "
+              f"InputRow:{Rows}, "
+              f"InputCols:{Cols}, "
+              f"InputDepth:{InChannels}, "
+              f"OutputDepth:{OutChannels}, "
+              f"Kernel W:{W}")
+        print("\n\n")
+
+    # TODO: Fix file name so that it corresponds to the csv file that was read
+    jsonfile = f'../benchmarkout/{csv}.json'
+    json.dump(ALLPARAMSTIMES, open(jsonfile, 'w'))
 
 ####################################################################
 # Main function
@@ -154,10 +229,13 @@ def benchmarkandverifyconv2d(csv):
               type=click.Choice(
                   ('conv1d','conv2d','conv3d','depthconv')),
               default='conv2d')
+@click.option('--nobenchmark/--benchmark', default=True)
 
-def cli(csv, type):
+def cli(csv, type, nobenchmark):
     if type == 'conv2d':
-        benchmarkandverifyconv2d(csv)
+        benchmarkandverifyconv2D(csv, nobenchmark)
+    elif type == 'conv1d':
+        benchmarkandverifyconv1D(csv, nobenchmark)
     else:
         raise ValueError('Invalid/Not yet implemented type %s' % type)
 
