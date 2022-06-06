@@ -2,14 +2,15 @@
 """ State fusion transformation """
 
 from typing import Dict, List, Set
+
 import networkx as nx
 
 from dace import dtypes, registry, sdfg, subsets
+from dace.config import Config
 from dace.sdfg import nodes
 from dace.sdfg import utils as sdutil
 from dace.sdfg.state import SDFGState
 from dace.transformation import transformation
-from dace.config import Config
 
 
 # Helper class for finding connected component correspondences
@@ -205,6 +206,9 @@ class StateFusion(transformation.MultiStateTransformation, transformation.Simpli
             symbols_used = set(out_edges[0].data.free_symbols)
             for e in in_edges:
                 if e.data.assignments.keys() & symbols_used:
+                    return False
+                # Also fail in the inverse; symbols assigned on the second edge are free symbols on the first edge
+                if new_assignments & set(e.data.free_symbols):
                     return False
 
         # There can be no state that have output edges pointing to both the
@@ -441,6 +445,12 @@ class StateFusion(transformation.MultiStateTransformation, transformation.Simpli
                                         # No path: ambiguous match
                                         return False
                                 found = outnode
+
+        from dace.codegen.targets.fpga import is_fpga_kernel  # avoid circular import
+
+        # Do not fuse FPGA and NON-FPGA states
+        if is_fpga_kernel(sdfg, first_state) != is_fpga_kernel(sdfg, second_state):
+            return False
 
         return True
 

@@ -81,8 +81,8 @@ class ExpandReducePure(pm.ExpandTransformation):
             init_state.add_mapped_tasklet(
                 'reduce_init', {'_o%d' % i: '0:%s' % symstr(d)
                                 for i, d in enumerate(outedge.data.subset.size())}, {},
-                'out = %s' % node.identity,
-                {'out': dace.Memlet.simple('_out', ','.join(['_o%d' % i for i in range(output_dims)]))},
+                '__out = %s' % node.identity,
+                {'__out': dace.Memlet.simple('_out', ','.join(['_o%d' % i for i in range(output_dims)]))},
                 external_edges=True)
         else:
             nstate = nsdfg.add_state()
@@ -119,17 +119,17 @@ class ExpandReducePure(pm.ExpandTransformation):
              for i, axis in enumerate(sorted(axes))})
 
         # Add identity tasklet for reduction
-        t = nstate.add_tasklet('identity', {'inp'}, {'out'}, 'out = inp')
+        t = nstate.add_tasklet('identity', {'__inp'}, {'__out'}, '__out = __inp')
 
         # Connect everything
         r = nstate.add_read('_in')
         w = nstate.add_read('_out')
         if ome:
-            nstate.add_memlet_path(r, ome, ime, t, dst_conn='inp', memlet=inmm)
-            nstate.add_memlet_path(t, imx, omx, w, src_conn='out', memlet=outm)
+            nstate.add_memlet_path(r, ome, ime, t, dst_conn='__inp', memlet=inmm)
+            nstate.add_memlet_path(t, imx, omx, w, src_conn='__out', memlet=outm)
         else:
-            nstate.add_memlet_path(r, ime, t, dst_conn='inp', memlet=inmm)
-            nstate.add_memlet_path(t, imx, w, src_conn='out', memlet=outm)
+            nstate.add_memlet_path(r, ime, t, dst_conn='__inp', memlet=inmm)
+            nstate.add_memlet_path(t, imx, w, src_conn='__out', memlet=outm)
 
         # Rename outer connectors and add to node
         inedge._dst_conn = '_in'
@@ -770,14 +770,16 @@ class ExpandReduceCUDABlockAll(pm.ExpandTransformation):
             LocalStorage.node_b: graph.nodes().index(new_exit)
         }
 
-        local_storage = InLocalStorage(sdfg, sdfg.sdfg_id, sdfg.nodes().index(state), in_local_storage_subgraph, 0)
+        local_storage = InLocalStorage()
+        local_storage.setup_match(sdfg, sdfg.sdfg_id, sdfg.nodes().index(state), in_local_storage_subgraph, 0)
 
         local_storage.array = in_edge.data.data
         local_storage.apply(graph, sdfg)
         in_transient = local_storage._data_node
         sdfg.data(in_transient.data).storage = dtypes.StorageType.Register
 
-        local_storage = OutLocalStorage(sdfg, sdfg.sdfg_id, sdfg.nodes().index(state), out_local_storage_subgraph, 0)
+        local_storage = OutLocalStorage()
+        local_storage.setup_match(sdfg, sdfg.sdfg_id, sdfg.nodes().index(state), out_local_storage_subgraph, 0)
         local_storage.array = out_edge.data.data
         local_storage.apply(graph, sdfg)
         out_transient = local_storage._data_node
@@ -823,7 +825,8 @@ class ExpandReduceCUDABlockAll(pm.ExpandTransformation):
         # finally, change the implementation to cuda (block)
         # itself and expand again.
         reduce_node.implementation = 'CUDA (block)'
-        sub_expansion = ExpandReduceCUDABlock(sdfg, sdfg.sdfg_id, sdfg.node_id(state), {}, 0)
+        sub_expansion = ExpandReduceCUDABlock()
+        sub_expansion.setup_match(sdfg, sdfg.sdfg_id, sdfg.node_id(state), {}, 0)
         return sub_expansion.expansion(node=node, state=state, sdfg=sdfg)
         #return reduce_node.expand(sdfg, state)
 

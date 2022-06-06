@@ -9,6 +9,7 @@ import networkx as nx
 import time
 
 import dace.sdfg.nodes
+from dace.codegen import compiled_sdfg as csdfg
 from dace.sdfg.graph import MultiConnectorEdge
 from dace.sdfg.sdfg import SDFG
 from dace.sdfg.nodes import Node, NestedSDFG
@@ -475,12 +476,17 @@ def consolidate_edges_scope(state: SDFGState, scope_node: Union[nd.EntryNode, nd
 
     for conn in connectors_to_remove:
         e = edges_by_connector[conn][0]
+        offset = 3 if conn.startswith('IN_') else (4 if conn.startswith('OUT_') else len(oprefix))
         # Outer side of the scope - remove edge and union subsets
-        target_conn = prefix + data_to_conn[e.data.data][len(oprefix):]
-        conn_to_remove = prefix + conn[len(oprefix):]
+        target_conn = prefix + data_to_conn[e.data.data][offset:]
+        conn_to_remove = prefix + conn[offset:]
         remove_outer_connector(conn_to_remove)
-        out_edge = next(ed for ed in outer_edges(scope_node) if ed.dst_conn == target_conn)
-        edge_to_remove = next(ed for ed in outer_edges(scope_node) if ed.dst_conn == conn_to_remove)
+        if isinstance(scope_node, nd.EntryNode):
+            out_edge = next(ed for ed in outer_edges(scope_node) if ed.dst_conn == target_conn)
+            edge_to_remove = next(ed for ed in outer_edges(scope_node) if ed.dst_conn == conn_to_remove)
+        else:
+            out_edge = next(ed for ed in outer_edges(scope_node) if ed.src_conn == target_conn)
+            edge_to_remove = next(ed for ed in outer_edges(scope_node) if ed.src_conn == conn_to_remove)
         out_edge.data.subset = sbs.union(out_edge.data.subset, edge_to_remove.data.subset)
 
         # Check if dangling connectors have been created and remove them,
@@ -489,9 +495,14 @@ def consolidate_edges_scope(state: SDFGState, scope_node: Union[nd.EntryNode, nd
 
         consolidated += 1
         # Inner side of the scope - remove and reconnect
-        remove_inner_connector(e.src_conn)
-        for e in edges_by_connector[conn]:
-            e._src_conn = data_to_conn[e.data.data]
+        if isinstance(scope_node, nd.EntryNode):
+            remove_inner_connector(e.src_conn)
+            for e in edges_by_connector[conn]:
+                e._src_conn = data_to_conn[e.data.data]
+        else:
+            remove_inner_connector(e.dst_conn)
+            for e in edges_by_connector[conn]:
+                e._dst_conn = data_to_conn[e.data.data]
 
     return consolidated
 
@@ -708,7 +719,7 @@ def get_view_edge(state: SDFGState, view: nd.AccessNode) -> gr.MultiConnectorEdg
         return in_edge
     if in_edge.data.data == view.data and out_edge.data.data == view.data:
         return None
-    
+
     # Check if there is a 'views' connector
     if in_edge.dst_conn and in_edge.dst_conn == 'views':
         return in_edge
@@ -1046,6 +1057,10 @@ def fuse_states(sdfg: SDFG, permissive: bool = False, progress: bool = None) -> 
     :return: The total number of states fused.
     """
     from dace.transformation.interstate import StateFusion  # Avoid import loop
+
+    if progress is None and not config.Config.get_bool('progress'):
+        progress = False
+
     if progress is True or progress is None:
         try:
             from tqdm import tqdm
@@ -1077,7 +1092,8 @@ def fuse_states(sdfg: SDFG, permissive: bool = False, progress: bool = None) -> 
                 if u in skip_nodes or v in skip_nodes:
                     continue
                 candidate = {StateFusion.first_state: sd.node_id(u), StateFusion.second_state: sd.node_id(v)}
-                sf = StateFusion(sd, id, -1, candidate, 0, override=True)
+                sf = StateFusion()
+                sf.setup_match(sd, id, -1, candidate, 0, override=True)
                 if sf.can_be_applied(sd, 0, sd, permissive=permissive):
                     sf.apply(sd, sd)
                     applied += 1
@@ -1111,6 +1127,10 @@ def inline_sdfgs(sdfg: SDFG, permissive: bool = False, progress: bool = None, mu
     """
     # Avoid import loops
     from dace.transformation.interstate import InlineSDFG, InlineMultistateSDFG
+
+    if progress is None and not config.Config.get_bool('progress'):
+        progress = False
+
     if progress is True or progress is None:
         try:
             from tqdm import tqdm
@@ -1138,7 +1158,8 @@ def inline_sdfgs(sdfg: SDFG, permissive: bool = False, progress: bool = None, mu
             candidate = {
                 InlineMultistateSDFG.nested_sdfg: node_id,
             }
-            inliner = InlineMultistateSDFG(sd, id, state_id, candidate, 0, override=True)
+            inliner = InlineMultistateSDFG()
+            inliner.setup_match(sd, id, state_id, candidate, 0, override=True)
             if inliner.can_be_applied(state, 0, sd, permissive=permissive):
                 inliner.apply(state, sd)
                 counter += 1
@@ -1149,7 +1170,8 @@ def inline_sdfgs(sdfg: SDFG, permissive: bool = False, progress: bool = None, mu
         candidate = {
             InlineSDFG.nested_sdfg: node_id,
         }
-        inliner = InlineSDFG(sd, id, state_id, candidate, 0, override=True)
+        inliner = InlineSDFG()
+        inliner.setup_match(sd, id, state_id, candidate, 0, override=True)
         if inliner.can_be_applied(state, 0, sd, permissive=permissive):
             inliner.apply(state, sd)
             counter += 1
@@ -1172,11 +1194,40 @@ def load_precompiled_sdfg(folder: str):
     :param folder: Path to SDFG output folder.
     :return: A callable CompiledSDFG object.
     """
-    from dace.codegen import compiled_sdfg as csdfg
     sdfg = SDFG.from_file(os.path.join(folder, 'program.sdfg'))
     suffix = config.Config.get('compiler', 'library_extension')
     return csdfg.CompiledSDFG(sdfg,
                               csdfg.ReloadableDLL(os.path.join(folder, 'build', f'lib{sdfg.name}.{suffix}'), sdfg.name))
+
+
+def distributed_compile(sdfg: SDFG, comm: "Intracomm") -> csdfg.CompiledSDFG:
+    """
+    Compiles an SDFG in rank 0 of MPI communicator `comm`. Then, the compiled SDFG is loaded in all other ranks.
+    NOTE: This method can be used only if the module mpi4py is installed.
+    :param sdfg: SDFG to be compiled.
+    :param comm: MPI communicator. "Intracomm" is the base mpi4py communicator class.
+    :return: Compiled SDFG.
+    """
+
+    rank = comm.Get_rank()
+    func = None
+    folder = None
+
+    # Rank 0 compiles SDFG.
+    if rank == 0:
+        func = sdfg.compile()
+        folder = sdfg.build_folder
+
+    # Broadcasts build folder.
+    folder = comm.bcast(folder, root=0)
+
+    # Loads compiled SDFG.
+    if rank > 0:
+        func = load_precompiled_sdfg(folder)
+
+    comm.Barrier()
+
+    return func
 
 
 def get_next_nonempty_states(sdfg: SDFG, state: SDFGState) -> Set[SDFGState]:
@@ -1255,9 +1306,11 @@ def is_nonfree_sym_dependent(node: nd.AccessNode, desc: dt.Data, state: SDFGStat
 
 
 def _tswds_state(
-        sdfg: SDFG, state: SDFGState,
-        symbols: Dict[str,
-                      dtypes.typeclass]) -> Generator[Tuple[SDFGState, Node, Dict[str, dtypes.typeclass]], None, None]:
+    sdfg: SDFG,
+    state: SDFGState,
+    symbols: Dict[str, dtypes.typeclass],
+    recursive: bool,
+) -> Generator[Tuple[SDFGState, Node, Dict[str, dtypes.typeclass]], None, None]:
     """
     Helper function for ``traverse_sdfg_with_defined_symbols``.
     :see: traverse_sdfg_with_defined_symbols.
@@ -1274,13 +1327,16 @@ def _tswds_state(
                 inner_syms.update(symbols)
                 inner_syms.update(node.new_symbols(sdfg, state, inner_syms))
                 yield from _traverse(node, inner_syms)
+            if isinstance(node, dace.sdfg.nodes.NestedSDFG) and recursive:
+                yield from traverse_sdfg_with_defined_symbols(node.sdfg, recursive)
 
     # Start with top-level nodes
     yield from _traverse(None, symbols)
 
 
 def traverse_sdfg_with_defined_symbols(
-        sdfg: SDFG) -> Generator[Tuple[SDFGState, Node, Dict[str, dtypes.typeclass]], None, None]:
+        sdfg: SDFG,
+        recursive: bool = False) -> Generator[Tuple[SDFGState, Node, Dict[str, dtypes.typeclass]], None, None]:
     """
     Traverses the SDFG, its states and nodes, yielding the defined symbols and their types at each node.
     :return: A generator that yields tuples of (state, node in state, currently-defined symbols)
@@ -1301,17 +1357,17 @@ def traverse_sdfg_with_defined_symbols(
         # Source
         if edge.src not in visited:
             visited.add(edge.src)
-            yield from _tswds_state(sdfg, edge.src, symbols)
+            yield from _tswds_state(sdfg, edge.src, symbols, recursive)
 
         # Add edge symbols into defined symbols
         issyms = edge.data.new_symbols(sdfg, symbols)
-        symbols.update(issyms)
+        symbols.update({k: v for k, v in issyms.items() if v is not None})
 
         # Destination
         if edge.dst not in visited:
             visited.add(edge.dst)
-            yield from _tswds_state(sdfg, edge.dst, symbols)
+            yield from _tswds_state(sdfg, edge.dst, symbols, recursive)
 
     # If there is only one state, the DFS will miss it
     if start_state not in visited:
-        yield from _tswds_state(sdfg, start_state, symbols)
+        yield from _tswds_state(sdfg, start_state, symbols, recursive)

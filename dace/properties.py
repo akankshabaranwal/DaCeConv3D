@@ -2,6 +2,7 @@
 import ast
 from collections import OrderedDict
 import copy
+import warnings
 from dace.frontend.python.astutils import unparse, TaskletFreeSymbolVisitor
 import json
 import pydoc
@@ -12,7 +13,7 @@ import dace.subsets as sbs
 import dace
 import dace.serialize
 from dace.symbolic import pystr_to_symbolic
-from dace.dtypes import DebugInfo
+from dace.dtypes import DebugInfo, typeclass
 from numbers import Integral, Number
 from typing import List, Set, Type, Union, TypeVar, Generic
 
@@ -710,6 +711,16 @@ class SDFGReferenceProperty(Property):
         # Parse the JSON back into an SDFG object
         return dace.SDFG.from_json(obj, context)
 
+class OptionalSDFGReferenceProperty(SDFGReferenceProperty):
+    """
+    An SDFG reference property that defaults to None if cannot be deserialized.
+    """
+    def from_json(self, obj, context=None):
+        try:
+            return super().from_json(obj, context)
+        except TypeError as ex:
+            warnings.warn(f'Could not deserialize optional SDFG ({type(ex).__name__}), defaulting to None: {str(ex)}')
+            return None
 
 class RangeProperty(Property):
     """ Custom Property type for `dace.subsets.Range` members. """
@@ -1277,9 +1288,13 @@ class TypeProperty(Property):
 class TypeClassProperty(Property):
     """ Custom property type for memory as defined in dace.types,
         e.g. `dace.float32`. """
+    
+    def __get__(self, obj, objtype=None) -> typeclass:
+        return super().__get__(obj, objtype)
+    
     @property
     def dtype(self):
-        return dace.dtypes.typeclass
+        return typeclass
 
     @staticmethod
     def from_string(s):

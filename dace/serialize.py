@@ -4,6 +4,7 @@ import json
 import numpy as np
 import warnings
 import dace.dtypes
+from dace import config
 
 
 class SerializableObject(object):
@@ -136,6 +137,8 @@ def from_json(obj, context=None, known_type=None):
         try:
             deserialized = _DACE_SERIALIZE_TYPES[t].from_json(obj, context=context)
         except Exception as ex:
+            if config.Config.get_bool('testing', 'deserialize_exception'):
+                raise
             warnings.warn(f'Failed to deserialize element, {type(ex).__name__}: {ex}')
             deserialized = SerializableObject.from_json(obj, context=context, typename=t)
         return deserialized
@@ -201,8 +204,6 @@ def set_properties_from_json(object_with_properties, json_obj, context=None, ign
 
         if isinstance(val, dict):
             val = prop.from_json(val, context)
-            if val is None and attrs[prop_name] is not None:
-                raise ValueError("Unparsed to None from: {}".format(attrs[prop_name]))
         else:
             try:
                 val = prop.from_json(val, context)

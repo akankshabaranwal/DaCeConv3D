@@ -300,6 +300,33 @@ def has_replacement(callobj: Callable, parent_object: Optional[Any] = None, node
     return oprepo.Replacements.get(astutils.rname(node)) is not None
 
 
+def make_kwargless_callback(func: Callable, node: ast.Call):
+    """
+    Creates a version of the function that has no keyword arguments and matches the number of arguments exactly.
+    Used for creating callbacks from C to Python with keyword arguments.
+    """
+    if not node.keywords:
+        return func
+    keywords = [kw.arg for kw in node.keywords]
+    poscount = len(node.args)
+
+    # Using two levels of functions to ensure keywords are stored with the callback
+    if poscount == 0:
+        def make_cb(keywords, _):
+            def cb_func(*all_args):
+                kwargs = {kw: arg for kw, arg in zip(keywords, all_args)}
+                return func(**kwargs)
+            return cb_func
+    else:
+        def make_cb(keywords, poscount):
+            def cb_func(*all_args):
+                args = all_args[:poscount]
+                kwargs = {kw: arg for kw, arg in zip(keywords, all_args[poscount:])}
+                return func(*args, **kwargs)
+            return cb_func
+    return make_cb(keywords, poscount)
+
+
 class GlobalResolver(astutils.ExtNodeTransformer, astutils.ASTHelperMixin):
     """ Resolves global constants and lambda expressions if not
         already defined in the given scope. """
@@ -392,7 +419,7 @@ class GlobalResolver(astutils.ExtNodeTransformer, astutils.ASTHelperMixin):
 
         elif detect_callables and hasattr(value, '__call__') and hasattr(value.__call__, '__sdfg__'):
             return self.global_value_to_node(value.__call__, parent_node, qualname, recurse, detect_callables)
-        elif isinstance(value, numpy.ndarray):
+        elif dtypes.is_array(value):
             # Arrays need to be stored as a new name and fed as an argument
             if id(value) in self.closure.array_mapping:
                 arrname = self.closure.array_mapping[id(value)]
@@ -435,7 +462,15 @@ class GlobalResolver(astutils.ExtNodeTransformer, astutils.ASTHelperMixin):
                 else:
                     cbqualname = astutils.rname(parent_node)
                 cbname = self._qualname_to_array_name(cbqualname, prefix='')
-                self.closure.callbacks[cbname] = (cbqualname, value, False)
+
+                # Make a version of the callback without keyword arguments
+                cb_func = make_kwargless_callback(value, parent_node)
+                
+                # If the callback already exists, and the details differ (e.g., different kwarg names), make new
+                if cbname in self.closure.callbacks and cb_func is not self.closure.callbacks[cbname][1]:
+                    cbname = data.find_new_name(cbname, self.closure.callbacks)
+
+                self.closure.callbacks[cbname] = (cbqualname, cb_func, False)
 
                 # From this point on, any failure will result in a callback
                 newnode = ast.Name(id=cbname, ctx=ast.Load())
@@ -579,12 +614,22 @@ class GlobalResolver(astutils.ExtNodeTransformer, astutils.ASTHelperMixin):
         return self.visit_Attribute(node)
 
     def visit_Call(self, node: ast.Call) -> Any:
+        from dace.frontend.python.interface import in_program  # Avoid import loop
+
         if hasattr(node.func, 'n') and isinstance(node.func.n, SDFGConvertible):
             # Skip already-parsed calls
             return self.generic_visit(node)
 
         try:
             global_func = astutils.evalnode(node.func, self.globals)
+
+            # Built-in functions are resolved directly
+            if global_func is in_program:
+                return self.global_value_to_node(True,
+                                                 parent_node=node,
+                                                 qualname=astutils.unparse(node),
+                                                 recurse=True)
+
             if self.resolve_functions:
                 global_val = astutils.evalnode(node, self.globals)
             else:

@@ -1,12 +1,13 @@
 # Copyright 2019-2021 ETH Zurich and the DaCe authors. All rights reserved.
 """ Python interface for DaCe functions. """
 
-from functools import wraps
 import inspect
+from functools import wraps
+from typing import Any, Callable, Deque, Dict, Generator, Optional, Tuple, TypeVar, Union, overload
+
 from dace import dtypes
 from dace.dtypes import paramdec
-from dace.frontend.python import parser, ndloop, tasklet_runner
-from typing import (Any, Callable, Deque, Dict, Generator, Optional, Tuple, TypeVar, overload, Union)
+from dace.frontend.python import ndloop, parser, tasklet_runner
 
 #############################################
 
@@ -26,7 +27,7 @@ def program(*args,
             auto_optimize=False,
             device=dtypes.DeviceType.CPU,
             constant_functions=False,
-            **kwargs) -> parser.DaceProgram:
+            **kwargs) -> Callable[..., parser.DaceProgram]:
     ...
 
 
@@ -36,7 +37,7 @@ def program(f: F,
             auto_optimize=False,
             device=dtypes.DeviceType.CPU,
             constant_functions=False,
-            **kwargs) -> parser.DaceProgram:
+            **kwargs) -> Callable[..., parser.DaceProgram]:
     """
     Entry point to a data-centric program. For methods and ``classmethod``s, use
     ``@dace.method``.
@@ -171,7 +172,7 @@ class TaskletMetaclass(type):
     def __enter__(self):
         # Parse and run tasklet
         frame = inspect.stack()[1][0]
-        filename = inspect.getframeinfo(frame).filename
+        filename = inspect.getframeinfo(frame, context=0).filename
         tasklet_ast = tasklet_runner.get_tasklet_ast(frame=frame)
         tasklet_runner.run_tasklet(tasklet_ast, filename, frame.f_globals, frame.f_locals)
 
@@ -207,7 +208,7 @@ class tasklet(metaclass=TaskletMetaclass):
 
         # Parse and run tasklet
         frame = inspect.stack()[1][0]
-        filename = inspect.getframeinfo(frame).filename
+        filename = inspect.getframeinfo(frame, context=0).filename
         tasklet_ast = tasklet_runner.get_tasklet_ast(frame=frame)
         tasklet_runner.run_tasklet(tasklet_ast, filename, frame.f_globals, frame.f_locals)
 
@@ -226,9 +227,19 @@ def unroll(generator):
     """
     yield from generator
 
+
 def nounroll(generator):
     """
     Explicitly annotates that a loop should not be unrolled during parsing.
     :param generator: The original generator to loop over.
     """
     yield from generator
+
+
+def in_program() -> bool:
+    """
+    Returns True if in a DaCe program parsing context. This function can be used to test whether the current
+    code runs inside the ``@dace.program`` parser.
+    :return: True if in a DaCe program parsing context, or False otherwise.
+    """
+    return False
