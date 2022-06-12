@@ -1,3 +1,3 @@
-"InputDepth","InputRow","InputCol","OutputDepth","KernelRow","KernelCol","Stride"
-4,9,9,5,3,3,1
-4,15,15,7,5,5,1
+InChannel,InputDepth,InputHeight,InputWidth,KernelDepth,KernelHeight,KernelWidth,OutputChannel,OutputDepth,OutputHeight,OutputWidth
+4,32,32,32,3,3,3,8,33,33,33
+4,33,33,33,3,3,3,8,30,30,30
