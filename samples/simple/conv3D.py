@@ -43,16 +43,7 @@ kwidth = dace.symbol('kwidth')
 dtype = dace.float64
 np_dtype = np.float64
 
-# Simple 3D convolution
-@dace.program(auto_optimize=True, device=dace.DeviceType.GPU)
-def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
-                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
-    Output[:] = 0
-    for n, oc, ic, d, h, w, kd, kh, kw in dace.map[0:N, 0:outchannels, 0:inchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2, 0:kdepth, 0:kheight, 0:kwidth]:
-            Output[n, d, h, w, oc] += Input[n, d-kdepth/2+kd, h-kheight/2+kh, w-kwidth/2+kw, ic] * kernel[kd, kh, kw, ic, oc]
                 
-
 # Trying out some optimizations
 def optimize_for_gpu(sdfg: dace.SDFG, n: int, indepth: int, inheight: int, inwidth: int, inchannels: int, w: int, outchannels: int):
     """ Optimize 3D convolution example for GPUs. """
@@ -77,7 +68,7 @@ def dace_simpleparallel(Input: dtype[N, indepth, inheight, inwidth, inchannels],
             tmp = tmp + Input[n, d-kdepth/2+kd, h-kheight/2+kh, w-kwidth/2+kw, ic] * kernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = tmp
 
-enableFun = [dace_simple]
+enableFun = [dace_simpleparallel]
 
 
 # Dace profiling method, Returns median values in ms
@@ -162,83 +153,6 @@ def verifyconv3D(csv):
             verify_with_ref_conv3D(functionname, op, Input, kernel, Output, n, currconv["InChannel"], currconv["OutputChannel"], currconv["InputDepth"], currconv["InputHeight"], currconv["InputWidth"], currconv["KernelWidth"])
         print("INFO: Verification done")
 
-# Code to run the benchmarking and verif
-def benchmarkandverifyconv3D(csv, nobenchmark):
-    # Maybe write a script which goes through these csvs one by one and generates the reports for each of them
-    header = ["InChannel","InputDepth","InputHeight","InputWidth","KernelDepth","KernelHeight","KernelWidth","OutputChannel","OutputDepth","OutputHeight","OutputWidth"]
-
-    csvfile = f'convparam/{csv}.csv'
-    convparams = pd.read_csv(csvfile)
-    convparams = pd.DataFrame(convparams, columns=header)
-
-    print("Parsing conv2D parameters")
-
-    # Reset index to iterate through each 2D convolution parameter from the csv file
-    convparams = convparams.reset_index()
-
-    ALLPARAMSTIMES = {}
-    for index, currconv in convparams.iterrows():
-        # Extract parameters to prepare data for convolution
-        n = 1
-        inchannels = currconv["InChannel"]
-        indepth = currconv["InputDepth"]
-        inheight = currconv["InputHeight"]
-        inwidth = currconv["InputWidth"]
-        kdepth = currconv["KernelDepth"]
-        kheight = currconv["KernelHeight"]
-        kwidth = currconv["KernelWidth"]
-        outchannels = currconv["OutputChannel"]
-
-        if (kdepth!=kheight or kheight!=kwidth or kdepth!=kwidth):
-            print("ERROR: !!! Conv3D with unequal kernel spatial dimensions not implemented")
-            return 1
-        w = kdepth
-        # Prepare data with numpy
-        Input = np.random.rand(n, indepth, inheight, inwidth, inchannels).astype(np_dtype)
-        kernel = np.random.rand(w, w, w, inchannels, outchannels).astype(np_dtype)
-        Output = np.zeros((n, indepth, inheight, inwidth, outchannels), dtype=np_dtype)
-
-        print(f'3D Convolution {inchannels}x{indepth}x{inheight}x{inwidth} '
-              f'with kernel {outchannels}x{inchannels}x{w}x{w}x{w}')
-
-        # ** Start Verification
-        input = tf.convert_to_tensor(Input)
-        filter = tf.convert_to_tensor(kernel)
-        op = tf.nn.conv3d(input, filter, strides=[1, 1, 1, 1, 1], padding="VALID")
-        verify_with_ref_conv3D(dace_simpleparallel, 'dace_simpleparallel', op, Input, kernel, Output, n, outchannels, indepth, inheight, inwidth, w)
-        verify_with_ref_conv3D(dace_simple, 'dace_simple', op, Input, kernel, Output, n, outchannels, indepth, inheight, inwidth, w)
-        print("INFO: Verification done")
-        # ** End Verification
-
-        if nobenchmark:
-            print("WARN: Skipping benchmarking")
-            continue
-
-        # ** Start Benchmarking **
-        # Warm up
-        timeit.Timer(dace_simpleparallel).repeat(repeat=5, number=1)
-        timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
-        print("INFO: Warmup done")
-
-        # Main benchmarking
-        TIMES = {}
-        nrepeat = 100
-        TIMES['dace_simpleparallel'] = rundaceprofiling(dace_simpleparallel, 'dace_simpleparallel', Input, kernel, Output, nrepeat)
-        x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
-        TIMES['tfgpu'] = np.median(x)
-        ALLPARAMSTIMES[f'{index}'] = TIMES
-        print(f"INFO: Done benchmarking with params as "
-              f"Batch size:{n}, "
-              f"InputChannels:{inchannels}, "
-              f"InputDepth X InputHeight X InputWidth:{indepth}X{inheight}X{inwidth}, "
-              f"Outputchannels:{outchannels}, "
-              f"Kernel dimension:{w}")
-        print("\n\n")
-
-    # TODO: Fix file name so that it corresponds to the csv file that was read
-    jsonfile = f'benchmarkout/{csv}.json'
-    json.dump(ALLPARAMSTIMES, open(jsonfile, 'w'))
-
 # Code to run the benchmarking on csv compared with tensorflow
 def benchmarkconv3D(csv, benchmark_fun, suffix):
     convparams = parsecsv(csv)
@@ -317,8 +231,6 @@ def cli(csv, mode):
     # Select if you want it to read from a csv file and run the functions or if you want to hard code some values??
     if(csv == 'None'):
         csv = 'sample'
-    benchmarkandverifyconv3D(csv, True)
-    exit()
     if mode == 'benchmark':
         iter = 0
         for fun_name in enableFun:
