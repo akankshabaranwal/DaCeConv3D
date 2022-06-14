@@ -49,16 +49,12 @@ def optimize_for_gpu(sdfg: dace.SDFG, n: int, indepth: int, inheight: int, inwid
     """ Optimize 3D convolution example for GPUs. """
     # Ensure integers are 32-bit by default
     dace.Config.set('compiler', 'default_data_types', value='C')
-    # Fuse the map and reduce nodes
-    sdfg.apply_transformations(MapReduceFusion)
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
 
-
 # Simple parallel 3D convolution
-# TODO: Autooptimize for this doesn't seem to work
 @dace.program(device=dace.DeviceType.GPU)
-def dace_simpleparallel(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
     Output[:] = 0
@@ -68,8 +64,25 @@ def dace_simpleparallel(Input: dtype[N, indepth, inheight, inwidth, inchannels],
             tmp = tmp + Input[n, d-kdepth/2+kd, h-kheight/2+kh, w-kwidth/2+kw, ic] * kernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = tmp
 
-enableFun = [dace_simpleparallel]
+# Loop tiling for outputs
+# Simple parallel 3D convolution
+# TODO: Is it important to use the SDFG graphs for this? Or do I just keep it as a tool to use if I need but if I can code it without it then its okay??
+@dace.program(device=dace.DeviceType.GPU)
+def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+    Output[:] = 0
+    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+        tmp = np.zeros([1], dtype=Input.dtype)
+        localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+        localKernel = np.copy(kernel)
+        for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
+            tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+        Output[n, d, h, w, oc] = tmp
 
+
+
+enableFun = [dace_simple, dace_looptiling]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -208,9 +221,12 @@ def optimizewithsdfgfun(csv):
             print("For SDFGs code only parses first row of inputs")
             break
 
-    sdfg: dace.SDFG = dace_simple.to_sdfg()
-    optimize_for_gpu(sdfg, n, indepth, inheight, inwidth, inchannels, w, outchannels)
-    sdfg(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
+    sdfg_simple: dace.SDFG = dace_simple.to_sdfg()
+    sdfg_tiling: dace.SDFG = dace_looptiling.to_sdfg()
+    optimize_for_gpu(sdfg_simple, n, indepth, inheight, inwidth, inchannels, w, outchannels)
+    optimize_for_gpu(sdfg_tiling, n, indepth, inheight, inwidth, inchannels, w, outchannels)    
+    sdfg_simple(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
+    sdfg_tiling(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
 
 
 @click.command()
@@ -218,7 +234,7 @@ def optimizewithsdfgfun(csv):
 @click.option('--mode',
               type=click.Choice(
                   ('benchmark', 'optimize', 'verify')),
-              default='optimize')
+              default='verify')
 # Different available command lines are
 # --mode verify
 # --mode verify --csv sample
