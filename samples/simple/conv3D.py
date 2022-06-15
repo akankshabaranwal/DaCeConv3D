@@ -52,6 +52,8 @@ def optimize_for_gpu(sdfg: dace.SDFG, n: int, indepth: int, inheight: int, inwid
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
 
+
+
 # Simple parallel 3D convolution
 @dace.program(device=dace.DeviceType.GPU)
 def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
@@ -80,9 +82,33 @@ def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = tmp
 
+# Take blocks of input and then compute all output channels one by one in the innermost loop. 
+# It should be like you pick up a certain set of inputs which are needed for a particular output value 
+# and then once its done only then you move on to the next set of inputs
+
+# # TODO: Figure out where the output channel should be in the ordering? Maybe it should depend on how its stored in the memory. 
+# # I think its probably okay to assume that different output channels are spread out so its okay if they are not computed close in time 
+# @dace.program(device=dace.DeviceType.GPU)
+# def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+#                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+#                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+#     Output[:] = 0
+#     for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+#         #tmp = np.zeros([1], dtype = Input.dtype)
+#         tmpBlock = np.zeros([2,2,2], dtype = Input.dtype)
+#         localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+#         localInputBlock = 
+#         localKernel = np.copy(kernel)
+        
+#         for bd, bh, bw, kd, kh, kw, ic in dace.map[0:2, 0:2, 0:2, 0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
+#             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+#             tmpBlock[bd, bh, bw] = tmpBlock[bd, bh, bw] + localInputBlock[] * localKernelBlock[] 
+            
+#         #Output[n, d, h, w, oc] = tmp
+#         Output[n, 2*d:2*d+2, 2*h:2*h+2, 2*w:2*w+2, oc] = tmpBlock
 
 
-enableFun = [dace_simple, dace_looptiling]
+enableFun = [dace_looptiling]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -222,11 +248,11 @@ def optimizewithsdfgfun(csv):
             break
 
     sdfg_simple: dace.SDFG = dace_simple.to_sdfg()
-    sdfg_tiling: dace.SDFG = dace_looptiling.to_sdfg()
+    #sdfg_tiling: dace.SDFG = dace_looptiling.to_sdfg()
     optimize_for_gpu(sdfg_simple, n, indepth, inheight, inwidth, inchannels, w, outchannels)
-    optimize_for_gpu(sdfg_tiling, n, indepth, inheight, inwidth, inchannels, w, outchannels)    
+    #optimize_for_gpu(sdfg_tiling, n, indepth, inheight, inwidth, inchannels, w, outchannels)    
     sdfg_simple(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
-    sdfg_tiling(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
+    #sdfg_tiling(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
 
 
 @click.command()
