@@ -55,34 +55,34 @@ def optimize_for_gpu(sdfg: dace.SDFG, n: int, indepth: int, inheight: int, inwid
     sdfg.apply_gpu_transformations()
 
 
-
 # Simple parallel 3D convolution
 @dace.program(device=dace.DeviceType.GPU)
 def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
     Output[:] = 0
-    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, 0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
         tmp = np.zeros([1], dtype=Input.dtype)
         for ic, kd, kh, kw in dace.map[0:inchannels, 0:kdepth, 0:kheight, 0:kwidth]:
-            tmp = tmp + Input[n, d-kdepth/2+kd, h-kheight/2+kh, w-kwidth/2+kw, ic] * kernel[kd, kh, kw, ic, oc]
+            tmp = tmp + Input[n, d+kd, h+kh, w+kw, ic] * kernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = tmp
 
-# Loop tiling for outputs
-# Simple parallel 3D convolution
-# TODO: Is it important to use the SDFG graphs for this? Or do I just keep it as a tool to use if I need but if I can code it without it then its okay??
-@dace.program(device=dace.DeviceType.GPU)
-def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
-                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
-    Output[:] = 0
-    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
-        tmp = np.zeros([1], dtype=Input.dtype)
-        localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
-        localKernel = np.copy(kernel)
-        for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
-            tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-        Output[n, d, h, w, oc] = tmp
+
+# # Loop tiling for outputs
+# # Simple parallel 3D convolution
+# # TODO: Is it important to use the SDFG graphs for this? Or do I just keep it as a tool to use if I need but if I can code it without it then its okay??
+# @dace.program(device=dace.DeviceType.GPU)
+# def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+#                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+#                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+#     Output[:] = 0
+#     for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+#         tmp = np.zeros([1], dtype=Input.dtype)
+#         localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+#         localKernel = np.copy(kernel)
+#         for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
+#             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+#         Output[n, d, h, w, oc] = tmp
 
 # Take blocks of input and then compute all output channels one by one in the innermost loop. 
 # It should be like you pick up a certain set of inputs which are needed for a particular output value 
@@ -97,9 +97,9 @@ def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
     for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
         SingleInput = np.copy(Input[n,:,:,:,:])
         SingleOutput = np.copy(Output[n,:,:,:,:])
-        for d, h, w in dace.map[kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+        for d, h, w in dace.map[0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
             tmp = np.zeros([outchannels], dtype=Input.dtype)
-            localInput = np.copy(SingleInput[d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+            localInput = np.copy(SingleInput[d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
             localKernel = np.copy(kernel)
             for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
                 tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
@@ -107,7 +107,26 @@ def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
         Output[n,:,:,:,:] = SingleOutput
 
 
-enableFun = [dace_simple, dace_blocktiling]
+@dace.program(device=dace.DeviceType.GPU)
+def dace_blocktilingv1(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
+                    ):
+    Output[:] = 0
+    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
+        SingleInput = np.copy(Input[n,:,:,:,:])
+        SingleOutput = np.copy(Output[n,:,:,:,:])
+        for d, h, w in dace.map[0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
+            tmp = np.zeros([outchannels], dtype=Input.dtype)
+            localInput = np.copy(SingleInput[d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
+            localKernel = np.copy(kernel)
+            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
+                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+            SingleOutput[ d, h, w, :] = tmp[:]
+        Output[n,:,:,:,:] = SingleOutput
+
+
+enableFun = [dace_blocktilingv1, dace_blocktiling, dace_simple]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -130,7 +149,7 @@ def timetfgpu_conv3D(input, filter):
 def verify_with_ref_conv3D(dace_fun, refop, Input, kernel, Output, n, inchannels, outchannels, indepth, inheight, inwidth, w):
     dace_fun(Input, kernel, Output)
     opdace = tf.convert_to_tensor(Output)
-    opdace = opdace[:, int(w / 2):indepth - int(w / 2), int(w / 2):inheight - int(w / 2), int(w / 2):inwidth - int(w / 2), :]
+    opdace = opdace[:, 0 : (indepth-w+1), 0 : (inheight-w+1) , 0 : (inwidth-w+1) , :]
     diff = np.linalg.norm(opdace - refop) / (n * outchannels * indepth * inheight * inwidth)
     print('Difference:', diff)
     if(diff<=1e-6):
