@@ -107,7 +107,7 @@ def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
         Output[n,:,:,:,:] = SingleOutput
 
 
-enableFun = [dace_blocktiling]
+enableFun = [dace_simple, dace_blocktiling]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -201,12 +201,13 @@ def benchmarkconv3D(csv, benchmark_fun, suffix):
         # Prepare inputs for tensorflow fun
         input = tf.convert_to_tensor(Input)
         filter = tf.convert_to_tensor(kernel)
-        
-        # Warm up
-        timeit.Timer(benchmark_fun).repeat(repeat=5, number=1)
+        # TF warm up
         timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
+        # Dace Warmup
+        rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
         print("INFO: Warmup done")
 
+        print("Start benchmarking instance")
         # Main benchmarking
         TIMES = {}
         nrepeat = 100
@@ -214,11 +215,12 @@ def benchmarkconv3D(csv, benchmark_fun, suffix):
         x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
         TIMES['tfgpu'] = np.median(x)
         ALLPARAMSTIMES[f'{index}'] = TIMES
+        print("End benchmarking instance")
     jsonfile = f'benchmarkout/dace_fun{suffix}{csv}.json'
     json.dump(ALLPARAMSTIMES, open(jsonfile, 'w'))
 
 
-def optimizewithsdfgfun(csv):
+def optimizewithsdfgfun(csv, dace_fun):
     print("Will create sdfgs and you can optimize stuff")
     if csv == 'nocsv':
         n = 1
@@ -246,16 +248,16 @@ def optimizewithsdfgfun(csv):
             print("For SDFGs code only parses first row of inputs")
             break
 
-    sdfg_fun: dace.SDFG = dace_blocktiling.to_sdfg()
+    sdfg_fun: dace.SDFG = dace_fun.to_sdfg()
     optimize_for_gpu(sdfg_fun, n, indepth, inheight, inwidth, inchannels, w, outchannels)
     sdfg_fun(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
-
+    return sdfg_fun
 
 @click.command()
 @click.option('--csv', type=str, default='None')
 @click.option('--mode',
               type=click.Choice(
-                  ('benchmark', 'optimize', 'verify')),
+                  ('benchmarkoptimized', 'benchmarkunoptimized', 'verify')),
               default='verify')
 # Different available command lines are
 # --mode verify
@@ -270,19 +272,23 @@ def cli(csv, mode):
     blockdim = 2
     if(csv == 'None'):
         csv = 'sample'
-    if mode == 'benchmark':
+    if mode == 'benchmarkunoptimized':
         iter = 0
         for fun_name in enableFun:
             benchmarkconv3D(csv, fun_name, iter)
             iter = iter+1
     elif mode == 'verify':
         verifyconv3D(csv)
-    elif mode == 'optimize':
+    elif mode == 'benchmarkoptimized':
         if(csv == 'None'):
             csv = 'nocsv'
-        optimizewithsdfgfun(csv)
+        iter = 0
+        for fun_name in enableFun:
+            sdfg_fun = optimizewithsdfgfun(csv, fun_name)
+            benchmarkconv3D(csv, fun_name, iter)
+            iter = iter + 1
     else:
-        print("Not sure what you wanted to do. Choose between benchmark, verify and optimize")
+        print("Not sure what you wanted to do. Choose between benchmarkunoptimized, verify and benchmarkoptimized")
     return 0
 
 
