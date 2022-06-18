@@ -28,6 +28,8 @@ indepth = dace.symbol('indepth')
 inheight = dace.symbol('inheight')
 inwidth = dace.symbol('inwidth')
 
+blockdim = dace.symbol('blockdim')
+
 N = dace.symbol('N') # Batch size
 
 outchannels = dace.symbol('outchannels')
@@ -51,6 +53,8 @@ def optimize_for_gpu(sdfg: dace.SDFG, n: int, indepth: int, inheight: int, inwid
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
+
+
 
 # Simple parallel 3D convolution
 @dace.program(device=dace.DeviceType.GPU)
@@ -80,9 +84,30 @@ def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = tmp
 
+# Take blocks of input and then compute all output channels one by one in the innermost loop. 
+# It should be like you pick up a certain set of inputs which are needed for a particular output value 
+# and then once its done only then you move on to the next set of inputs
+
+@dace.program(device=dace.DeviceType.GPU)
+def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
+                    ):
+    Output[:] = 0
+    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
+        SingleInput = np.copy(Input[n,:,:,:,:])
+        SingleOutput = np.copy(Output[n,:,:,:,:])
+        for d, h, w in dace.map[kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+            tmp = np.zeros([outchannels], dtype=Input.dtype)
+            localInput = np.copy(SingleInput[d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+            localKernel = np.copy(kernel)
+            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
+                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+            SingleOutput[ d, h, w, :] = tmp[:]
+        Output[n,:,:,:,:] = SingleOutput
 
 
-enableFun = [dace_simple, dace_looptiling]
+enableFun = [dace_simple, dace_blocktiling]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -176,12 +201,13 @@ def benchmarkconv3D(csv, benchmark_fun, suffix):
         # Prepare inputs for tensorflow fun
         input = tf.convert_to_tensor(Input)
         filter = tf.convert_to_tensor(kernel)
-        
-        # Warm up
-        timeit.Timer(benchmark_fun).repeat(repeat=5, number=1)
+        # TF warm up
         timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
+        # Dace Warmup
+        rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
         print("INFO: Warmup done")
 
+        print("Start benchmarking instance")
         # Main benchmarking
         TIMES = {}
         nrepeat = 100
@@ -189,11 +215,12 @@ def benchmarkconv3D(csv, benchmark_fun, suffix):
         x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
         TIMES['tfgpu'] = np.median(x)
         ALLPARAMSTIMES[f'{index}'] = TIMES
+        print("End benchmarking instance")
     jsonfile = f'benchmarkout/dace_fun{suffix}{csv}.json'
     json.dump(ALLPARAMSTIMES, open(jsonfile, 'w'))
 
 
-def optimizewithsdfgfun(csv):
+def optimizewithsdfgfun(csv, dace_fun):
     print("Will create sdfgs and you can optimize stuff")
     if csv == 'nocsv':
         n = 1
@@ -221,19 +248,16 @@ def optimizewithsdfgfun(csv):
             print("For SDFGs code only parses first row of inputs")
             break
 
-    sdfg_simple: dace.SDFG = dace_simple.to_sdfg()
-    sdfg_tiling: dace.SDFG = dace_looptiling.to_sdfg()
-    optimize_for_gpu(sdfg_simple, n, indepth, inheight, inwidth, inchannels, w, outchannels)
-    optimize_for_gpu(sdfg_tiling, n, indepth, inheight, inwidth, inchannels, w, outchannels)    
-    sdfg_simple(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
-    sdfg_tiling(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
-
+    sdfg_fun: dace.SDFG = dace_fun.to_sdfg()
+    optimize_for_gpu(sdfg_fun, n, indepth, inheight, inwidth, inchannels, w, outchannels)
+    sdfg_fun(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
+    return sdfg_fun
 
 @click.command()
 @click.option('--csv', type=str, default='None')
 @click.option('--mode',
               type=click.Choice(
-                  ('benchmark', 'optimize', 'verify')),
+                  ('benchmarkoptimized', 'benchmarkunoptimized', 'verify')),
               default='verify')
 # Different available command lines are
 # --mode verify
@@ -245,21 +269,26 @@ def optimizewithsdfgfun(csv):
 def cli(csv, mode):
     # Select which dace functions you want to enable
     # Select if you want it to read from a csv file and run the functions or if you want to hard code some values??
+    blockdim = 2
     if(csv == 'None'):
         csv = 'sample'
-    if mode == 'benchmark':
+    if mode == 'benchmarkunoptimized':
         iter = 0
         for fun_name in enableFun:
             benchmarkconv3D(csv, fun_name, iter)
             iter = iter+1
     elif mode == 'verify':
         verifyconv3D(csv)
-    elif mode == 'optimize':
+    elif mode == 'benchmarkoptimized':
         if(csv == 'None'):
             csv = 'nocsv'
-        optimizewithsdfgfun(csv)
+        iter = 0
+        for fun_name in enableFun:
+            sdfg_fun = optimizewithsdfgfun(csv, fun_name)
+            benchmarkconv3D(csv, fun_name, iter)
+            iter = iter + 1
     else:
-        print("Not sure what you wanted to do. Choose between benchmark, verify and optimize")
+        print("Not sure what you wanted to do. Choose between benchmarkunoptimized, verify and benchmarkoptimized")
     return 0
 
 
