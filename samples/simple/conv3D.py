@@ -86,29 +86,27 @@ def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
 # It should be like you pick up a certain set of inputs which are needed for a particular output value 
 # and then once its done only then you move on to the next set of inputs
 
-# # TODO: Figure out where the output channel should be in the ordering? Maybe it should depend on how its stored in the memory. 
-# # I think its probably okay to assume that different output channels are spread out so its okay if they are not computed close in time 
-# @dace.program(device=dace.DeviceType.GPU)
-# def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
-#                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-#                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
-#     Output[:] = 0
-#     for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
-#         #tmp = np.zeros([1], dtype = Input.dtype)
-#         tmpBlock = np.zeros([2,2,2], dtype = Input.dtype)
-#         localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
-#         localInputBlock = 
-#         localKernel = np.copy(kernel)
-        
-#         for bd, bh, bw, kd, kh, kw, ic in dace.map[0:2, 0:2, 0:2, 0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
-#             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-#             tmpBlock[bd, bh, bw] = tmpBlock[bd, bh, bw] + localInputBlock[] * localKernelBlock[] 
-            
-#         #Output[n, d, h, w, oc] = tmp
-#         Output[n, 2*d:2*d+2, 2*h:2*h+2, 2*w:2*w+2, oc] = tmpBlock
+# TODO: Figure out where the output channel should be in the ordering? Maybe it should depend on how its stored in the memory. 
+# I think its probably okay to assume that different output channels are spread out so its okay if they are not computed close in time 
+@dace.program(device=dace.DeviceType.GPU)
+def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+    Output[:] = 0
+    for n in dace.map[0:N]:
+        L3Input = np.copy(Input[n,:,:,:,:])
+        L3Output = np.copy(Output[n,:,:,:,:])
+        for d, h, w in dace.map[kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+            tmp = np.zeros([outchannels], dtype=Input.dtype)
+            localInput = np.copy(L3Input[ d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+            localKernel = np.copy(kernel)
+            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
+                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+            L3Output[ d, h, w, :] = tmp[:]
+        Output[n,:,:,:,:] = L3Output
 
 
-enableFun = [dace_looptiling]
+enableFun = [dace_blocktiling]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
