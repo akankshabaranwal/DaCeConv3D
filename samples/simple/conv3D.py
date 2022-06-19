@@ -109,8 +109,8 @@ def dace_tiling_v2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
         Output[n,:,:,:,:] = localOutput
 
 
-# TODO: This is the placeholder function of where the blocktiling part for 2X2X2 is implemented
 # TODO: Figure out in which order should the innermost sequential loop be in 
+# TODO: Parameterize the block size
 @dace.program(device=dace.DeviceType.GPU)
 def dace_tiling_2X2X2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
@@ -133,7 +133,7 @@ def dace_tiling_2X2X2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
         Output[n,:,:,:,:] = localOutput
 
 
-enableFun = [dace_tiling_2X2X2]
+enableFun = [dace_simple]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -147,6 +147,19 @@ def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
     df = pd.read_csv(latest_file)
     return df['Runtime_sec'].median()*1000
 
+
+# Dace profiling method, Returns median values in ms
+def rundacesdfgprofiling(dace_fun, Input, kernel, Output, reps, n, indepth, inheight, inwidth, inchannels, w, outchannels):
+    # Temporarily set the DACE_profiling config to True
+    with dace.config.set_temporary('profiling', value=True):
+        # You can control the number of times a program is run with the treps configuration
+        with dace.config.set_temporary('treps', value=reps):
+            dace_fun(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
+
+    list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
+    latest_file = max(list_of_files, key=os.path.getctime)
+    df = pd.read_csv(latest_file)
+    return df['Runtime_sec'].median()*1000
 
 # Place holder function for tf reference code for profiling.
 def timetfgpu_conv3D(input, filter):
@@ -217,8 +230,9 @@ def verifyconv3D(csv):
             verify_with_ref_conv3D(functionname, op, Input, kernel, Output, n, currconv["InChannel"], currconv["OutputChannel"], currconv["InputDepth"], currconv["InputHeight"], currconv["InputWidth"], currconv["KernelWidth"])
         print("INFO: Verification done")
 
+
 # Code to run the benchmarking on csv compared with tensorflow
-def benchmarkconv3D(csv, benchmark_fun, suffix):
+def benchmarkconv3D(csv, benchmark_fun, suffix, issdfg):
     convparams = parsecsv(csv)
     ALLPARAMSTIMES = {}
     for index, currconv in convparams.iterrows():
@@ -229,15 +243,30 @@ def benchmarkconv3D(csv, benchmark_fun, suffix):
         filter = tf.convert_to_tensor(kernel)
         # TF warm up
         timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
+        n = 1
+        inchannels = currconv["InChannel"]
+        indepth = currconv["InputDepth"]
+        inheight = currconv["InputHeight"]
+        inwidth = currconv["InputWidth"]
+        w = currconv["KernelDepth"]
+        outchannels = currconv["OutputChannel"]
+
         # Dace Warmup
-        rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
+        if not (issdfg):
+            rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
+        else:
+            
+            rundacesdfgprofiling(benchmark_fun, Input, kernel, Output, 10, n, indepth, inheight, inwidth, inchannels, w, outchannels)
         print("INFO: Warmup done")
 
         print("Start benchmarking instance")
         # Main benchmarking
         TIMES = {}
         nrepeat = 100
-        TIMES['dace_fun'] = rundaceprofiling(benchmark_fun, Input, kernel, Output, nrepeat)
+        if not (issdfg):
+           TIMES['dace_optimized_fun'] = rundaceprofiling(benchmark_fun, Input, kernel, Output, nrepeat)
+        else:            
+            TIMES['dace_optimized_fun'] = rundacesdfgprofiling(benchmark_fun, Input, kernel, Output, 10, nrepeat, indepth, inheight, inwidth, inchannels, w, outchannels)
         x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
         TIMES['tfgpu'] = np.median(x)
         ALLPARAMSTIMES[f'{index}'] = TIMES
@@ -276,7 +305,6 @@ def optimizewithsdfgfun(csv, dace_fun):
 
     sdfg_fun: dace.SDFG = dace_fun.to_sdfg()
     optimize_for_gpu(sdfg_fun, n, indepth, inheight, inwidth, inchannels, w, outchannels)
-    sdfg_fun(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
     return sdfg_fun
 
 @click.command()
@@ -311,8 +339,8 @@ def cli(csv, mode):
         iter = 0
         for fun_name in enableFun:
             sdfg_fun = optimizewithsdfgfun(csv, fun_name)
-            # TODO: You need to fix this part. Its still calling the unoptimized version
-            #benchmarkconv3D(csv, fun_name, iter)
+            issdfg = True
+            benchmarkconv3D(csv, sdfg_fun, iter, issdfg)
             iter = iter + 1
     else:
         print("Not sure what you wanted to do. Choose between benchmarkunoptimized, verify and benchmarkoptimized")
