@@ -70,63 +70,70 @@ def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
 
 # # Loop tiling for outputs
 # # Simple parallel 3D convolution
-# # TODO: Is it important to use the SDFG graphs for this? Or do I just keep it as a tool to use if I need but if I can code it without it then its okay??
-# @dace.program(device=dace.DeviceType.GPU)
-# def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
-#                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-#                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
-#     Output[:] = 0
-#     for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
-#         tmp = np.zeros([1], dtype=Input.dtype)
-#         localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
-#         localKernel = np.copy(kernel)
-#         for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
-#             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-#         Output[n, d, h, w, oc] = tmp
+# TODO: This fails in the sdfg generation part specifically for GPU
+@dace.program(device=dace.DeviceType.GPU)
+def dace_tiling_v1(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+    Output[:] = 0
+    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, 0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
+        tmp = np.zeros([1], dtype=Input.dtype)
+        localInput = np.copy(Input[n, d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
+        localKernel = np.copy(kernel)
+        for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
+            tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+        Output[n, d, h, w, oc] = tmp
 
 # Take blocks of input and then compute all output channels one by one in the innermost loop. 
 # It should be like you pick up a certain set of inputs which are needed for a particular output value 
 # and then once its done only then you move on to the next set of inputs
-
+# TODO: This fails in the sdfg generation part specifically for GPU
 @dace.program(device=dace.DeviceType.GPU)
-def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+def dace_tiling_v2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
-                    ):
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
     Output[:] = 0
-    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
-        SingleInput = np.copy(Input[n,:,:,:,:])
-        SingleOutput = np.copy(Output[n,:,:,:,:])
-        for d, h, w in dace.map[0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
+    for n in dace.map[0:N]:
+        localOutput = np.copy(Output[n, :, :, :, :])
+        for d, h, w in dace.map[ 0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
             tmp = np.zeros([outchannels], dtype=Input.dtype)
-            localInput = np.copy(SingleInput[d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
-            localKernel = np.copy(kernel)
-            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
-                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-            SingleOutput[ d, h, w, :] = tmp[:]
-        Output[n,:,:,:,:] = SingleOutput
+            localInput = np.copy(Input[n,d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
+            for oc in dace.map[0:outchannels]:
+                localKernel = np.copy(kernel[ :, :, :, :, oc])
+                for kd in range(0,kdepth): # The only compulsory sequential part
+                    for kh in range(0,kheight):
+                        for kw in range(0,kwidth):
+                            for ic in range(0,inchannels):
+                                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic]
+            localOutput[d, h, w, :] = tmp[:]
+        Output[n,:,:,:,:] = localOutput
 
 
+# TODO: This is the placeholder function of where the blocktiling part for 2X2X2 is implemented
+# TODO: Figure out in which order should the innermost sequential loop be in 
 @dace.program(device=dace.DeviceType.GPU)
-def dace_blocktilingv1(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+def dace_tiling_2X2X2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
-                    ):
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
     Output[:] = 0
-    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
-        SingleInput = np.copy(Input[n,:,:,:,:])
-        SingleOutput = np.copy(Output[n,:,:,:,:])
-        for d, h, w in dace.map[0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
-            tmp = np.zeros([outchannels], dtype=Input.dtype)
-            localInput = np.copy(SingleInput[d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
-            localKernel = np.copy(kernel)
-            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
-                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-            SingleOutput[ d, h, w, :] = tmp[:]
-        Output[n,:,:,:,:] = SingleOutput
+    for n in dace.map[0:N]:
+        localOutput = np.copy(Output[n, :, :, :, :])
+        for dhalf, hhalf, whalf, oc in dace.map[ 0:(indepth-kdepth+1)/2, 0:(inheight-kheight+1)/2, 0:(inwidth-kwidth+1)/2, 0:outchannels]:
+            localInputBlock = np.copy(Input[n, 2*dhalf:(2*dhalf+1)+kdepth, 2*hhalf:(2*hhalf+1)+kheight, 2*whalf:(2*whalf+1)+kwidth, 0:inchannels])
+            localKernel = np.copy(kernel[ :, :, :, :, oc])
+            tmpBlock = np.zeros([2,2,2], dtype=Input.dtype)
+            for wind, winh, winw in dace.map[0:2, 0:2, 0:2]:                    
+                localInput = np.copy(localInputBlock[ wind:wind+kdepth, winh:winh+kheight, winw:winw+kwidth, :])
+                for kd in range(0,kdepth): # The only compulsory sequential part
+                    for kh in range(0,kheight):
+                        for kw in range(0,kwidth):
+                            for ic in range(0,inchannels):
+                                tmpBlock[wind, winh, winw] = tmpBlock[wind, winh, winw] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic]
+            localOutput[2*dhalf:2*dhalf+2, 2*hhalf:2*hhalf+2, 2*whalf:2*whalf+2, oc] = tmpBlock[:,:,:]
+        Output[n,:,:,:,:] = localOutput
 
 
-enableFun = [dace_blocktilingv1, dace_blocktiling, dace_simple]
+enableFun = [dace_tiling_2X2X2]
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -304,7 +311,8 @@ def cli(csv, mode):
         iter = 0
         for fun_name in enableFun:
             sdfg_fun = optimizewithsdfgfun(csv, fun_name)
-            benchmarkconv3D(csv, fun_name, iter)
+            # TODO: You need to fix this part. Its still calling the unoptimized version
+            #benchmarkconv3D(csv, fun_name, iter)
             iter = iter + 1
     else:
         print("Not sure what you wanted to do. Choose between benchmarkunoptimized, verify and benchmarkoptimized")
