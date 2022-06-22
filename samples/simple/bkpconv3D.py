@@ -37,8 +37,7 @@ outdepth = dace.symbol('outdepth')
 outheight = dace.symbol('outheight')
 outwidth = dace.symbol('outwidth')
 
-#kdepth = dace.symbol('kdepth')
-kdepth = 3
+kdepth = dace.symbol('kdepth')
 kheight = dace.symbol('kheight')
 kwidth = dace.symbol('kwidth')
 
@@ -71,70 +70,67 @@ def dace_simple(Input: dtype[N, indepth, inheight, inwidth, inchannels],
 
 # # Loop tiling for outputs
 # # Simple parallel 3D convolution
-# TODO: This fails in the sdfg generation part specifically for GPU
-@dace.program(device=dace.DeviceType.GPU)
-def dace_tiling_v1(Input: dtype[N, indepth, inheight, inwidth, inchannels],
-                      kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
-    Output[:] = 0
-    for n, oc, d, h, w in dace.map[0:N, 0:outchannels, 0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
-        tmp = np.zeros([1], dtype=Input.dtype)
-        localInput = np.copy(Input[n, d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
-        localKernel = np.copy(kernel)
-        for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
-            tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
-        Output[n, d, h, w, oc] = tmp
+# # TODO: Is it important to use the SDFG graphs for this? Or do I just keep it as a tool to use if I need but if I can code it without it then its okay??
+# @dace.program(device=dace.DeviceType.GPU)
+# def dace_looptiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+#                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
+#                       Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+#     Output[:] = 0
+#     for n, oc, d, h, w in dace.map[0:N, 0:outchannels, kdepth/2:indepth-kdepth/2, kheight/2:inheight-kheight/2, kwidth/2:inwidth-kwidth/2]:
+#         tmp = np.zeros([1], dtype=Input.dtype)
+#         localInput = np.copy(Input[n, d-kdepth/2:d+kdepth/2, h-kheight/2:h+kheight/2, w-kwidth/2:w+kwidth/2, 0:inchannels])
+#         localKernel = np.copy(kernel)
+#         for kd, kh, kw, ic in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels]:
+#             tmp = tmp + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+#         Output[n, d, h, w, oc] = tmp
 
 # Take blocks of input and then compute all output channels one by one in the innermost loop. 
 # It should be like you pick up a certain set of inputs which are needed for a particular output value 
 # and then once its done only then you move on to the next set of inputs
-# TODO: This fails in the sdfg generation part specifically for GPU
+
 @dace.program(device=dace.DeviceType.GPU)
-def dace_tiling_v2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+def dace_blocktiling(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
+                    ):
     Output[:] = 0
-    for n in dace.map[0:N]:
-        localOutput = np.copy(Output[n, :, :, :, :])
-        for d, h, w in dace.map[ 0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
+    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
+        SingleInput = np.copy(Input[n,:,:,:,:])
+        SingleOutput = np.copy(Output[n,:,:,:,:])
+        for d, h, w in dace.map[0:indepth-kdepth+1, 0:inheight-kheight+1, 0:inwidth-kwidth+1]:
             tmp = np.zeros([outchannels], dtype=Input.dtype)
-            localInput = np.copy(Input[n,d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
-            for oc in dace.map[0:outchannels]:
-                localKernel = np.copy(kernel[ :, :, :, :, oc])
-                for kd in range(0,kdepth): # The only compulsory sequential part
-                    for kh in range(0,kheight):
-                        for kw in range(0,kwidth):
-                            for ic in range(0,inchannels):
-                                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic]
-            localOutput[d, h, w, :] = tmp[:]
-        Output[n,:,:,:,:] = localOutput
+            localInput = np.copy(SingleInput[d:d+kdepth, h:h+kheight, w:w+kwidth, 0:inchannels])
+            localKernel = np.copy(kernel)
+            for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
+                tmp[oc] = tmp[oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+            SingleOutput[ d, h, w, :] = tmp[:]
+        Output[n,:,:,:,:] = SingleOutput
 
 
-# TODO: Figure out in which order should the innermost sequential loop be in 
-# TODO: Parameterize the block size
 @dace.program(device=dace.DeviceType.GPU)
-def dace_tiling_2X2X2(Input: dtype[N, indepth, inheight, inwidth, inchannels],
+def dace_blocktilingv1(Input: dtype[N, indepth, inheight, inwidth, inchannels],
                       kernel: dtype[kdepth, kheight, kwidth, inchannels, outchannels],
-                      Output: dtype[N, indepth, inheight, inwidth, outchannels]):
+                      Output: dtype[N, indepth, inheight, inwidth, outchannels],
+                    ):
     Output[:] = 0
-    for n in dace.map[0:N]:
-        localOutput = np.copy(Output[n, :, :, :, :])
-        for dhalf, hhalf, whalf, oc in dace.map[ 0:(indepth-kdepth+1)/2, 0:(inheight-kheight+1)/2, 0:(inwidth-kwidth+1)/2, 0:outchannels]:
-            localInputBlock = np.copy(Input[n, 2*dhalf:(2*dhalf+1)+kdepth, 2*hhalf:(2*hhalf+1)+kheight, 2*whalf:(2*whalf+1)+kwidth, 0:inchannels])
-            localKernel = np.copy(kernel[ :, :, :, :, oc])
-            tmpBlock = np.zeros([2,2,2], dtype=Input.dtype)
-            for wind, winh, winw in dace.map[0:2, 0:2, 0:2]:                    
-                localInput = np.copy(localInputBlock[ wind:wind+kdepth, winh:winh+kheight, winw:winw+kwidth, :])
-                for kd in range(0,kdepth): # The compulsory sequential part
-                    for kh in range(0,kheight):
-                        for kw in range(0,kwidth):
-                            for ic in range(0,inchannels):
-                                tmpBlock[wind, winh, winw] = tmpBlock[wind, winh, winw] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic]
-            localOutput[2*dhalf:2*dhalf+2, 2*hhalf:2*hhalf+2, 2*whalf:2*whalf+2, oc] = tmpBlock[:,:,:]
-        Output[n,:,:,:,:] = localOutput
+    for n in dace.map[0:N]:# TODO should this be in the innermost loop? 
+        SingleInput = np.copy(Input[n,:,:,:,:])
+        SingleOutput = np.copy(Output[n,:,:,:,:])
+        for dhalf, hhalf, whalf in dace.map[0:(indepth-kdepth+1)/2, 0:(inheight-kheight+1)/2, 0:(inwidth-kwidth+1)/2]:
+            tmp = np.zeros([2,2,2,outchannels], dtype=Input.dtype)
+            localInput = np.copy(SingleInput[2*dhalf:2*dhalf+kdepth, 2*hhalf:2*hhalf+kheight, 2*whalf:2*whalf+kwidth, 0:inchannels])
+            localKernel = np.copy(kernel)
+            for id in range(0,2):
+                for ih in range(0,2):
+                    for iw in range(0,2): 
+                        for kd, kh, kw, ic, oc in dace.map[0:kdepth, 0:kheight, 0:kwidth, 0:inchannels, 0:outchannels]:
+                            tmp[id,ih,iw,oc] = tmp[id,ih,iw,oc] + localInput[kd, kh, kw, ic] * localKernel[kd, kh, kw, ic, oc]
+            SingleOutput[2*dhalf:2*dhalf+2, 2*hhalf:2*hhalf+2, 2*whalf:2*whalf+2, :] = tmp[:]
+        Output[n,:,:,:,:] = SingleOutput
 
 
-enableFun = [dace_tiling_2X2X2]
+enableFun = [dace_blocktilingv1, dace_blocktiling, dace_simple]
+enableFunName = ['dace_blocktilingv1']
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
@@ -148,19 +144,6 @@ def rundaceprofiling(dace_fun, Input, kernel, Output, reps):
     df = pd.read_csv(latest_file)
     return df['Runtime_sec'].median()*1000
 
-
-# Dace profiling method, Returns median values in ms
-def rundacesdfgprofiling(dace_fun, Input, kernel, Output, reps, n, indepth, inheight, inwidth, inchannels, w, outchannels):
-    # Temporarily set the DACE_profiling config to True
-    with dace.config.set_temporary('profiling', value=True):
-        # You can control the number of times a program is run with the treps configuration
-        with dace.config.set_temporary('treps', value=reps):
-            dace_fun(Input,kernel,Output, N=n, indepth=indepth, inheight=inheight, inwidth=inwidth, inchannels=inchannels, kdepth=w, kheight=w, kwidth=w, outchannels=outchannels)
-
-    list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
-    latest_file = max(list_of_files, key=os.path.getctime)
-    df = pd.read_csv(latest_file)
-    return df['Runtime_sec'].median()*1000
 
 # Place holder function for tf reference code for profiling.
 def timetfgpu_conv3D(input, filter):
@@ -231,9 +214,8 @@ def verifyconv3D(csv):
             verify_with_ref_conv3D(functionname, op, Input, kernel, Output, n, currconv["InChannel"], currconv["OutputChannel"], currconv["InputDepth"], currconv["InputHeight"], currconv["InputWidth"], currconv["KernelWidth"])
         print("INFO: Verification done")
 
-
 # Code to run the benchmarking on csv compared with tensorflow
-def benchmarkconv3D(csv, benchmark_fun, suffix, issdfg):
+def benchmarkconv3D(csv, benchmark_fun, suffix):
     convparams = parsecsv(csv)
     ALLPARAMSTIMES = {}
     for index, currconv in convparams.iterrows():
@@ -244,30 +226,15 @@ def benchmarkconv3D(csv, benchmark_fun, suffix, issdfg):
         filter = tf.convert_to_tensor(kernel)
         # TF warm up
         timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
-        n = 1
-        inchannels = currconv["InChannel"]
-        indepth = currconv["InputDepth"]
-        inheight = currconv["InputHeight"]
-        inwidth = currconv["InputWidth"]
-        w = currconv["KernelDepth"]
-        outchannels = currconv["OutputChannel"]
-
         # Dace Warmup
-        if not (issdfg):
-            rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
-        else:
-            
-            rundacesdfgprofiling(benchmark_fun, Input, kernel, Output, 10, n, indepth, inheight, inwidth, inchannels, w, outchannels)
+        rundaceprofiling(benchmark_fun, Input, kernel, Output, 10)
         print("INFO: Warmup done")
 
         print("Start benchmarking instance")
         # Main benchmarking
         TIMES = {}
         nrepeat = 100
-        if not (issdfg):
-           TIMES['dace_optimized_fun'] = rundaceprofiling(benchmark_fun, Input, kernel, Output, nrepeat)
-        else:            
-            TIMES['dace_optimized_fun'] = rundacesdfgprofiling(benchmark_fun, Input, kernel, Output, 10, nrepeat, indepth, inheight, inwidth, inchannels, w, outchannels)
+        TIMES['dace_fun'] = rundaceprofiling(benchmark_fun, Input, kernel, Output, nrepeat)
         x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
         TIMES['tfgpu'] = np.median(x)
         ALLPARAMSTIMES[f'{index}'] = TIMES
@@ -313,7 +280,7 @@ def optimizewithsdfgfun(csv, dace_fun):
 @click.option('--csv', type=str, default='None')
 @click.option('--mode',
               type=click.Choice(
-                  ('benchmarkoptimized', 'benchmarkunoptimized', 'verify', 'optimizeforgpu')),
+                  ('benchmarkoptimized', 'benchmarkunoptimized', 'verify')),
               default='verify')
 # Different available command lines are
 # --mode verify
@@ -341,12 +308,8 @@ def cli(csv, mode):
         iter = 0
         for fun_name in enableFun:
             sdfg_fun = optimizewithsdfgfun(csv, fun_name)
-            issdfg = True
-            benchmarkconv3D(csv, sdfg_fun, iter, issdfg)
+            benchmarkconv3D(csv, fun_name, iter)
             iter = iter + 1
-    elif mode == 'optimizeforgpu':
-        for fun_name in enableFun:
-            sdfg_fun = optimizewithsdfgfun(csv, fun_name)
     else:
         print("Not sure what you wanted to do. Choose between benchmarkunoptimized, verify and benchmarkoptimized")
     return 0
