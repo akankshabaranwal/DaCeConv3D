@@ -1,0 +1,5812 @@
+{
+  "type": "SDFG",
+  "attributes": {
+    "arg_names": [
+      "Input",
+      "kernel",
+      "Output"
+    ],
+    "constants_prop": {},
+    "_arrays": {
+      "Input": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "131072",
+            "4096",
+            "128",
+            "4",
+            "1"
+          ],
+          "total_size": "131072",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1",
+            "32",
+            "32",
+            "32",
+            "4"
+          ],
+          "transient": false,
+          "storage": "CPU_Heap",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "Output": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "262144",
+            "8192",
+            "256",
+            "8",
+            "1"
+          ],
+          "total_size": "262144",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1",
+            "32",
+            "32",
+            "32",
+            "8"
+          ],
+          "transient": false,
+          "storage": "CPU_Heap",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "__tmp4": {
+        "type": "Scalar",
+        "attributes": {
+          "allow_conflicts": false,
+          "dtype": "float32",
+          "shape": [
+            "1"
+          ],
+          "transient": true,
+          "storage": "Register",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "__tmp5": {
+        "type": "Scalar",
+        "attributes": {
+          "allow_conflicts": false,
+          "dtype": "float32",
+          "shape": [
+            "1"
+          ],
+          "transient": true,
+          "storage": "Register",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "gpu_Input": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "131072",
+            "4096",
+            "128",
+            "4",
+            "1"
+          ],
+          "total_size": "131072",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1",
+            "32",
+            "32",
+            "32",
+            "4"
+          ],
+          "transient": true,
+          "storage": "GPU_Global",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "gpu_Output": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "262144",
+            "8192",
+            "256",
+            "8",
+            "1"
+          ],
+          "total_size": "262144",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1",
+            "32",
+            "32",
+            "32",
+            "8"
+          ],
+          "transient": true,
+          "storage": "GPU_Global",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "gpu_kernel": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "288",
+            "96",
+            "32",
+            "8",
+            "1"
+          ],
+          "total_size": "864",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "3",
+            "3",
+            "3",
+            "4",
+            "8"
+          ],
+          "transient": true,
+          "storage": "GPU_Global",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "kernel": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "288",
+            "96",
+            "32",
+            "8",
+            "1"
+          ],
+          "total_size": "864",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "3",
+            "3",
+            "3",
+            "4",
+            "8"
+          ],
+          "transient": false,
+          "storage": "CPU_Heap",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "r_tmp": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "1"
+          ],
+          "total_size": "1",
+          "offset": [
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1"
+          ],
+          "transient": true,
+          "storage": "Register",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      },
+      "trans_gpu_Input": {
+        "type": "Array",
+        "attributes": {
+          "allow_conflicts": false,
+          "strides": [
+            "108",
+            "36",
+            "12",
+            "4",
+            "1"
+          ],
+          "total_size": "108",
+          "offset": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "may_alias": false,
+          "alignment": 0,
+          "start_offset": 0,
+          "dtype": "float32",
+          "shape": [
+            "1",
+            "3",
+            "3",
+            "3",
+            "4"
+          ],
+          "transient": true,
+          "storage": "Register",
+          "lifetime": "Scope",
+          "location": {},
+          "debuginfo": null
+        }
+      }
+    },
+    "symbols": {},
+    "instrument": "No_Instrumentation",
+    "global_code": {
+      "frame": {
+        "string_data": "",
+        "language": "CPP"
+      }
+    },
+    "init_code": {
+      "frame": {
+        "string_data": "",
+        "language": "CPP"
+      }
+    },
+    "exit_code": {
+      "frame": {
+        "string_data": "",
+        "language": "CPP"
+      }
+    },
+    "orig_sdfg": {
+      "type": "SDFG",
+      "attributes": {
+        "arg_names": [
+          "Input",
+          "kernel",
+          "Output"
+        ],
+        "constants_prop": {},
+        "_arrays": {
+          "Input": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "131072",
+                "4096",
+                "128",
+                "4",
+                "1"
+              ],
+              "total_size": "131072",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "1",
+                "32",
+                "32",
+                "32",
+                "4"
+              ],
+              "transient": false,
+              "storage": "CPU_Heap",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "Output": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "262144",
+                "8192",
+                "256",
+                "8",
+                "1"
+              ],
+              "total_size": "262144",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "1",
+                "32",
+                "32",
+                "32",
+                "8"
+              ],
+              "transient": false,
+              "storage": "CPU_Heap",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "__tmp4": {
+            "type": "Scalar",
+            "attributes": {
+              "allow_conflicts": false,
+              "dtype": "float32",
+              "shape": [
+                "1"
+              ],
+              "transient": true,
+              "storage": "Register",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "__tmp5": {
+            "type": "Scalar",
+            "attributes": {
+              "allow_conflicts": false,
+              "dtype": "float32",
+              "shape": [
+                "1"
+              ],
+              "transient": true,
+              "storage": "Register",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "gpu_Input": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "131072",
+                "4096",
+                "128",
+                "4",
+                "1"
+              ],
+              "total_size": "131072",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "1",
+                "32",
+                "32",
+                "32",
+                "4"
+              ],
+              "transient": true,
+              "storage": "GPU_Global",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "gpu_Output": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "262144",
+                "8192",
+                "256",
+                "8",
+                "1"
+              ],
+              "total_size": "262144",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "1",
+                "32",
+                "32",
+                "32",
+                "8"
+              ],
+              "transient": true,
+              "storage": "GPU_Global",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "gpu_kernel": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "288",
+                "96",
+                "32",
+                "8",
+                "1"
+              ],
+              "total_size": "864",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "3",
+                "3",
+                "3",
+                "4",
+                "8"
+              ],
+              "transient": true,
+              "storage": "GPU_Global",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "kernel": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "288",
+                "96",
+                "32",
+                "8",
+                "1"
+              ],
+              "total_size": "864",
+              "offset": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "3",
+                "3",
+                "3",
+                "4",
+                "8"
+              ],
+              "transient": false,
+              "storage": "CPU_Heap",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          },
+          "r_tmp": {
+            "type": "Array",
+            "attributes": {
+              "allow_conflicts": false,
+              "strides": [
+                "1"
+              ],
+              "total_size": "1",
+              "offset": [
+                "0"
+              ],
+              "may_alias": false,
+              "alignment": 0,
+              "start_offset": 0,
+              "dtype": "float32",
+              "shape": [
+                "1"
+              ],
+              "transient": true,
+              "storage": "Register",
+              "lifetime": "Scope",
+              "location": {},
+              "debuginfo": null
+            }
+          }
+        },
+        "symbols": {},
+        "instrument": "No_Instrumentation",
+        "global_code": {
+          "frame": {
+            "string_data": "",
+            "language": "CPP"
+          }
+        },
+        "init_code": {
+          "frame": {
+            "string_data": "",
+            "language": "CPP"
+          }
+        },
+        "exit_code": {
+          "frame": {
+            "string_data": "",
+            "language": "CPP"
+          }
+        },
+        "orig_sdfg": null,
+        "transformation_hist": [],
+        "logical_groups": [],
+        "openmp_sections": true,
+        "debuginfo": {
+          "type": "DebugInfo",
+          "start_line": 75,
+          "end_line": 83,
+          "start_column": 0,
+          "end_column": 0,
+          "filename": "/home/akanksha/spcl/dacelocal/samples/simple/conv3D.py"
+        },
+        "callback_mapping": {},
+        "name": "dace_simple"
+      },
+      "nodes": [
+        {
+          "type": "SDFGState",
+          "label": "dace_simple_copyin",
+          "id": 0,
+          "collapsed": false,
+          "scope_dict": {
+            "-1": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              6,
+              20
+            ],
+            "4": [
+              5,
+              7,
+              10,
+              11,
+              13,
+              14
+            ],
+            "7": [
+              8,
+              9
+            ],
+            "11": [
+              12,
+              15,
+              16,
+              17,
+              18,
+              19
+            ]
+          },
+          "nodes": [
+            {
+              "type": "AccessNode",
+              "label": "Input",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": null,
+                "data": "Input",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 0,
+              "scope_entry": null,
+              "scope_exit": null
+            },
+            {
+              "type": "AccessNode",
+              "label": "gpu_Input",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": null,
+                "data": "gpu_Input",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 1,
+              "scope_entry": null,
+              "scope_exit": null
+            },
+            {
+              "type": "AccessNode",
+              "label": "kernel",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": null,
+                "data": "kernel",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 2,
+              "scope_entry": null,
+              "scope_exit": null
+            },
+            {
+              "type": "AccessNode",
+              "label": "gpu_kernel",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": null,
+                "data": "gpu_kernel",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 3,
+              "scope_entry": null,
+              "scope_exit": null
+            },
+            {
+              "type": "MapEntry",
+              "label": "dace_simple_78[n=0, d=0:30, h=0:30, w=0:30, oc=0:8]",
+              "attributes": {
+                "label": "dace_simple_78",
+                "params": [
+                  "n",
+                  "d",
+                  "h",
+                  "w",
+                  "oc"
+                ],
+                "range": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "schedule": "GPU_Device",
+                "unroll": false,
+                "collapse": 1,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 78,
+                  "end_line": 78,
+                  "start_column": 97,
+                  "end_column": 97,
+                  "filename": "conv3D.py"
+                },
+                "is_collapsed": false,
+                "instrument": "No_Instrumentation",
+                "in_connectors": {
+                  "IN_Input": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  },
+                  "IN_kernel": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  }
+                },
+                "out_connectors": {
+                  "OUT_Input": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  },
+                  "OUT_kernel": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  }
+                }
+              },
+              "id": 4,
+              "scope_entry": null,
+              "scope_exit": "5"
+            },
+            {
+              "type": "MapExit",
+              "label": "dace_simple_78[n=0, d=0:30, h=0:30, w=0:30, oc=0:8]",
+              "attributes": {
+                "in_connectors": {
+                  "IN_Output": "float32"
+                },
+                "out_connectors": {
+                  "OUT_Output": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  }
+                }
+              },
+              "id": 5,
+              "scope_entry": "4",
+              "scope_exit": "5"
+            },
+            {
+              "type": "AccessNode",
+              "label": "gpu_Output",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 78,
+                  "end_line": 78,
+                  "start_column": 97,
+                  "end_column": 97,
+                  "filename": "conv3D.py"
+                },
+                "data": "gpu_Output",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 6,
+              "scope_entry": null,
+              "scope_exit": null
+            },
+            {
+              "type": "MapEntry",
+              "label": "_numpy_full__map[__i0=0]",
+              "attributes": {
+                "label": "_numpy_full__map",
+                "params": [
+                  "__i0"
+                ],
+                "range": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "schedule": "Sequential",
+                "unroll": false,
+                "collapse": 1,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 79,
+                  "end_line": 79,
+                  "start_column": 36,
+                  "end_column": 36,
+                  "filename": "conv3D.py"
+                },
+                "is_collapsed": false,
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 7,
+              "scope_entry": "4",
+              "scope_exit": "9"
+            },
+            {
+              "type": "Tasklet",
+              "label": "_numpy_full_",
+              "attributes": {
+                "code": {
+                  "string_data": "__out = 0.0",
+                  "language": "Python"
+                },
+                "state_fields": [],
+                "code_global": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_init": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_exit": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 79,
+                  "end_line": 79,
+                  "start_column": 36,
+                  "end_column": 36,
+                  "filename": "conv3D.py"
+                },
+                "instrument": "No_Instrumentation",
+                "label": "_numpy_full_",
+                "location": {},
+                "environments": [],
+                "in_connectors": {},
+                "out_connectors": {
+                  "__out": "float32"
+                }
+              },
+              "id": 8,
+              "scope_entry": "7",
+              "scope_exit": "9"
+            },
+            {
+              "type": "MapExit",
+              "label": "_numpy_full__map[__i0=0]",
+              "attributes": {
+                "in_connectors": {
+                  "IN___tmp1": "float32"
+                },
+                "out_connectors": {
+                  "OUT___tmp1": "float32"
+                }
+              },
+              "id": 9,
+              "scope_entry": "7",
+              "scope_exit": "9"
+            },
+            {
+              "type": "AccessNode",
+              "label": "r_tmp",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 79,
+                  "end_line": 79,
+                  "start_column": 36,
+                  "end_column": 36,
+                  "filename": "conv3D.py"
+                },
+                "data": "r_tmp",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 10,
+              "scope_entry": "4",
+              "scope_exit": "5"
+            },
+            {
+              "type": "MapEntry",
+              "label": "dace_simple_78_4_81[kd=0:3, kh=0:3, kw=0:3, ic=0:4]",
+              "attributes": {
+                "label": "dace_simple_78_4_81",
+                "params": [
+                  "kd",
+                  "kh",
+                  "kw",
+                  "ic"
+                ],
+                "range": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "schedule": "Sequential",
+                "unroll": false,
+                "collapse": 1,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 81,
+                  "end_line": 81,
+                  "start_column": 8,
+                  "end_column": 8,
+                  "filename": "conv3D.py"
+                },
+                "is_collapsed": false,
+                "instrument": "No_Instrumentation",
+                "in_connectors": {
+                  "IN___tmp1": "float32",
+                  "IN___tmp2": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  },
+                  "IN___tmp_82_28_r_in_from_3_0": {
+                    "type": "pointer",
+                    "dtype": "float32"
+                  }
+                },
+                "out_connectors": {
+                  "OUT___tmp1": "float32",
+                  "OUT___tmp2": "float32",
+                  "OUT___tmp_82_28_r_in_from_3_0": "float32"
+                }
+              },
+              "id": 11,
+              "scope_entry": "4",
+              "scope_exit": "12"
+            },
+            {
+              "type": "MapExit",
+              "label": "dace_simple_78_4_81[kd=0:3, kh=0:3, kw=0:3, ic=0:4]",
+              "attributes": {
+                "in_connectors": {
+                  "IN___tmp1": "float32"
+                },
+                "out_connectors": {
+                  "OUT___tmp1": "float32"
+                }
+              },
+              "id": 12,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "AccessNode",
+              "label": "r_tmp",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 81,
+                  "end_line": 81,
+                  "start_column": 8,
+                  "end_column": 8,
+                  "filename": "conv3D.py"
+                },
+                "data": "r_tmp",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 13,
+              "scope_entry": "4",
+              "scope_exit": "5"
+            },
+            {
+              "type": "Tasklet",
+              "label": "assign_83_8",
+              "attributes": {
+                "code": {
+                  "string_data": "__out = __inp",
+                  "language": "Python"
+                },
+                "state_fields": [],
+                "code_global": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_init": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_exit": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 83,
+                  "end_line": 83,
+                  "start_column": 27,
+                  "end_column": 27,
+                  "filename": "conv3D.py"
+                },
+                "instrument": "No_Instrumentation",
+                "label": "assign_83_8",
+                "location": {},
+                "environments": [],
+                "in_connectors": {
+                  "__inp": "float32"
+                },
+                "out_connectors": {
+                  "__out": "float32"
+                }
+              },
+              "id": 14,
+              "scope_entry": "4",
+              "scope_exit": "5"
+            },
+            {
+              "type": "Tasklet",
+              "label": "_Mult_",
+              "attributes": {
+                "code": {
+                  "string_data": "__out = (__in1 * __in2)",
+                  "language": "Python"
+                },
+                "state_fields": [],
+                "code_global": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_init": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_exit": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 82,
+                  "end_line": 82,
+                  "start_column": 82,
+                  "end_column": 82,
+                  "filename": "conv3D.py"
+                },
+                "instrument": "No_Instrumentation",
+                "label": "_Mult_",
+                "location": {},
+                "environments": [],
+                "in_connectors": {
+                  "__in1": "float32",
+                  "__in2": "float32"
+                },
+                "out_connectors": {
+                  "__out": "float32"
+                }
+              },
+              "id": 15,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "AccessNode",
+              "label": "__tmp4",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 82,
+                  "end_line": 82,
+                  "start_column": 82,
+                  "end_column": 82,
+                  "filename": "conv3D.py"
+                },
+                "data": "__tmp4",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 16,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "Tasklet",
+              "label": "_Add_",
+              "attributes": {
+                "code": {
+                  "string_data": "__out = (__in1 + __in2)",
+                  "language": "Python"
+                },
+                "state_fields": [],
+                "code_global": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_init": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_exit": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 82,
+                  "end_line": 82,
+                  "start_column": 82,
+                  "end_column": 82,
+                  "filename": "conv3D.py"
+                },
+                "instrument": "No_Instrumentation",
+                "label": "_Add_",
+                "location": {},
+                "environments": [],
+                "in_connectors": {
+                  "__in1": "float32",
+                  "__in2": "float32"
+                },
+                "out_connectors": {
+                  "__out": "float32"
+                }
+              },
+              "id": 17,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "AccessNode",
+              "label": "__tmp5",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 82,
+                  "end_line": 82,
+                  "start_column": 82,
+                  "end_column": 82,
+                  "filename": "conv3D.py"
+                },
+                "data": "__tmp5",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 18,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "Tasklet",
+              "label": "assign_82_12",
+              "attributes": {
+                "code": {
+                  "string_data": "__out = __inp",
+                  "language": "Python"
+                },
+                "state_fields": [],
+                "code_global": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_init": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "code_exit": {
+                  "string_data": "",
+                  "language": "CPP"
+                },
+                "debuginfo": {
+                  "type": "DebugInfo",
+                  "start_line": 82,
+                  "end_line": 82,
+                  "start_column": 82,
+                  "end_column": 82,
+                  "filename": "conv3D.py"
+                },
+                "instrument": "No_Instrumentation",
+                "label": "assign_82_12",
+                "location": {},
+                "environments": [],
+                "in_connectors": {
+                  "__inp": "float32"
+                },
+                "out_connectors": {
+                  "__out": "float32"
+                }
+              },
+              "id": 19,
+              "scope_entry": "11",
+              "scope_exit": "12"
+            },
+            {
+              "type": "AccessNode",
+              "label": "Output",
+              "attributes": {
+                "setzero": false,
+                "debuginfo": null,
+                "data": "Output",
+                "instrument": "No_Instrumentation",
+                "in_connectors": {},
+                "out_connectors": {}
+              },
+              "id": 20,
+              "scope_entry": null,
+              "scope_exit": null
+            }
+          ],
+          "edges": [
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "131072",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "Input",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "131072"
+                  }
+                }
+              },
+              "src": "0",
+              "dst": "1",
+              "dst_connector": null,
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "864",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "kernel",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "864"
+                  }
+                }
+              },
+              "src": "2",
+              "dst": "3",
+              "dst_connector": null,
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": null,
+                    "other_subset": null,
+                    "data": null,
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "7",
+              "dst": "8",
+              "dst_connector": null,
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": null,
+                    "other_subset": null,
+                    "data": null,
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "4",
+              "dst": "7",
+              "dst_connector": null,
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "262144",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "Output",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "262144"
+                  }
+                }
+              },
+              "src": "6",
+              "dst": "20",
+              "dst_connector": null,
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "28334880000",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_Input",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "31",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "28334880000"
+                  }
+                }
+              },
+              "src": "1",
+              "dst": "4",
+              "dst_connector": "IN_Input",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "108",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "108"
+                  }
+                }
+              },
+              "src": "10",
+              "dst": "11",
+              "dst_connector": "IN___tmp1",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "23328000",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_kernel",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "23328000"
+                  }
+                }
+              },
+              "src": "3",
+              "dst": "4",
+              "dst_connector": "IN_kernel",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "__tmp4",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "16",
+              "dst": "17",
+              "dst_connector": "__in2",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "13",
+              "dst": "14",
+              "dst_connector": "__inp",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "__tmp5",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "18",
+              "dst": "19",
+              "dst_connector": "__inp",
+              "src_connector": null
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "108",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d",
+                          "end": "d + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h",
+                          "end": "h + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "w",
+                          "end": "w + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_Input",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d",
+                          "end": "d + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h",
+                          "end": "h + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "w",
+                          "end": "w + 2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "108"
+                  }
+                }
+              },
+              "src": "4",
+              "dst": "11",
+              "dst_connector": "IN___tmp_82_28_r_in_from_3_0",
+              "src_connector": "OUT_Input"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "216000",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_Output",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "29",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "7",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "216000"
+                  }
+                }
+              },
+              "src": "5",
+              "dst": "6",
+              "dst_connector": null,
+              "src_connector": "OUT_Output"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "9",
+              "dst": "10",
+              "dst_connector": null,
+              "src_connector": "OUT___tmp1"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "108",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "108"
+                  }
+                }
+              },
+              "src": "12",
+              "dst": "13",
+              "dst_connector": null,
+              "src_connector": "OUT___tmp1"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "11",
+              "dst": "17",
+              "dst_connector": "__in1",
+              "src_connector": "OUT___tmp1"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "kd",
+                          "end": "kd",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kh",
+                          "end": "kh",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kw",
+                          "end": "kw",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "ic",
+                          "end": "ic",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_kernel",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "kd",
+                          "end": "kd",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kh",
+                          "end": "kh",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kw",
+                          "end": "kw",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "ic",
+                          "end": "ic",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "11",
+              "dst": "15",
+              "dst_connector": "__in2",
+              "src_connector": "OUT___tmp2"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d + kd",
+                          "end": "d + kd",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h + kh",
+                          "end": "h + kh",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kw + w",
+                          "end": "kw + w",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "ic",
+                          "end": "ic",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_Input",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d + kd",
+                          "end": "d + kd",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h + kh",
+                          "end": "h + kh",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "kw + w",
+                          "end": "kw + w",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "ic",
+                          "end": "ic",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "11",
+              "dst": "15",
+              "dst_connector": "__in1",
+              "src_connector": "OUT___tmp_82_28_r_in_from_3_0"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "108",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_kernel",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "2",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "0",
+                          "end": "3",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "dst_subset": null,
+                    "num_accesses": "108"
+                  }
+                }
+              },
+              "src": "4",
+              "dst": "11",
+              "dst_connector": "IN___tmp2",
+              "src_connector": "OUT_kernel"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "__tmp4",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "15",
+              "dst": "16",
+              "dst_connector": null,
+              "src_connector": "__out"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "__tmp5",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "17",
+              "dst": "18",
+              "dst_connector": null,
+              "src_connector": "__out"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d",
+                          "end": "d",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h",
+                          "end": "h",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "w",
+                          "end": "w",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "gpu_Output",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "n",
+                          "end": "n",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "d",
+                          "end": "d",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "h",
+                          "end": "h",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "w",
+                          "end": "w",
+                          "step": "1",
+                          "tile": "1"
+                        },
+                        {
+                          "start": "oc",
+                          "end": "oc",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "14",
+              "dst": "5",
+              "dst_connector": "IN_Output",
+              "src_connector": "__out"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "__i0",
+                          "end": "__i0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "__i0",
+                          "end": "__i0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "8",
+              "dst": "9",
+              "dst_connector": "IN___tmp1",
+              "src_connector": "__out"
+            },
+            {
+              "type": "MultiConnectorEdge",
+              "attributes": {
+                "data": {
+                  "type": "Memlet",
+                  "attributes": {
+                    "volume": "1",
+                    "dynamic": false,
+                    "subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "other_subset": null,
+                    "data": "r_tmp",
+                    "wcr": null,
+                    "debuginfo": null,
+                    "wcr_nonatomic": false,
+                    "allow_oob": false,
+                    "src_subset": null,
+                    "dst_subset": {
+                      "type": "Range",
+                      "ranges": [
+                        {
+                          "start": "0",
+                          "end": "0",
+                          "step": "1",
+                          "tile": "1"
+                        }
+                      ]
+                    },
+                    "num_accesses": "1"
+                  }
+                }
+              },
+              "src": "19",
+              "dst": "12",
+              "dst_connector": "IN___tmp1",
+              "src_connector": "__out"
+            }
+          ],
+          "attributes": {
+            "is_collapsed": false,
+            "nosync": false,
+            "instrument": "No_Instrumentation",
+            "executions": "0",
+            "dynamic_executions": true,
+            "ranges": {},
+            "location": {}
+          }
+        }
+      ],
+      "edges": [],
+      "sdfg_list_id": 0,
+      "start_state": 0,
+      "dace_version": "0.13"
+    },
+    "transformation_hist": [
+      {
+        "type": "PatternTransformation",
+        "transformation": "MapExpansion",
+        "sdfg_id": 0,
+        "state_id": 0,
+        "_subgraph": {
+          "0": 4
+        },
+        "expr_index": 0
+      },
+      {
+        "type": "PatternTransformation",
+        "transformation": "MapCollapse",
+        "sdfg_id": 0,
+        "state_id": 0,
+        "_subgraph": {
+          "0": 21,
+          "1": 22
+        },
+        "expr_index": 0
+      },
+      {
+        "type": "PatternTransformation",
+        "transformation": "MapCollapse",
+        "sdfg_id": 0,
+        "state_id": 0,
+        "_subgraph": {
+          "0": 25,
+          "1": 21
+        },
+        "expr_index": 0
+      },
+      {
+        "type": "PatternTransformation",
+        "transformation": "TrivialMapElimination",
+        "sdfg_id": 0,
+        "state_id": 0,
+        "_subgraph": {
+          "0": 4
+        },
+        "expr_index": 0
+      },
+      {
+        "type": "PatternTransformation",
+        "transformation": "InLocalStorage",
+        "array": null,
+        "prefix": "trans_",
+        "create_array": true,
+        "sdfg_id": 0,
+        "state_id": 0,
+        "_subgraph": {
+          "0": 19,
+          "1": 9
+        },
+        "expr_index": 0
+      }
+    ],
+    "logical_groups": [],
+    "openmp_sections": true,
+    "debuginfo": {
+      "type": "DebugInfo",
+      "start_line": 75,
+      "end_line": 83,
+      "start_column": 0,
+      "end_column": 0,
+      "filename": "/home/akanksha/spcl/dacelocal/samples/simple/conv3D.py"
+    },
+    "callback_mapping": {},
+    "name": "dace_simple_0",
+    "hash": "0c97aefe59852b98ec2ca7b9e2edb7f0decf1423307ee4d6367e90f73feeab5c"
+  },
+  "nodes": [
+    {
+      "type": "SDFGState",
+      "label": "dace_simple_copyin",
+      "id": 0,
+      "collapsed": false,
+      "scope_dict": {
+        "-1": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          18,
+          21
+        ],
+        "5": [
+          6,
+          7
+        ],
+        "9": [
+          10,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "19": [
+          5,
+          8,
+          9,
+          11,
+          12,
+          20,
+          23
+        ],
+        "21": [
+          19,
+          22
+        ]
+      },
+      "nodes": [
+        {
+          "type": "AccessNode",
+          "label": "Input",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "Input",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 0,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "AccessNode",
+          "label": "gpu_Input",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "gpu_Input",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 1,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "AccessNode",
+          "label": "kernel",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "kernel",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 2,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "AccessNode",
+          "label": "gpu_kernel",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "gpu_kernel",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 3,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "AccessNode",
+          "label": "gpu_Output",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 78,
+              "end_line": 78,
+              "start_column": 97,
+              "end_column": 97,
+              "filename": "conv3D.py"
+            },
+            "data": "gpu_Output",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 4,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "MapEntry",
+          "label": "_numpy_full__map[__i0=0]",
+          "attributes": {
+            "label": "_numpy_full__map",
+            "params": [
+              "__i0"
+            ],
+            "range": {
+              "type": "Range",
+              "ranges": [
+                {
+                  "start": "0",
+                  "end": "0",
+                  "step": "1",
+                  "tile": "1"
+                }
+              ]
+            },
+            "schedule": "Sequential",
+            "unroll": false,
+            "collapse": 1,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 79,
+              "end_line": 79,
+              "start_column": 36,
+              "end_column": 36,
+              "filename": "conv3D.py"
+            },
+            "is_collapsed": false,
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 5,
+          "scope_entry": "19",
+          "scope_exit": "7"
+        },
+        {
+          "type": "Tasklet",
+          "label": "_numpy_full_",
+          "attributes": {
+            "code": {
+              "string_data": "__out = 0.0",
+              "language": "Python"
+            },
+            "state_fields": [],
+            "code_global": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_init": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_exit": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 79,
+              "end_line": 79,
+              "start_column": 36,
+              "end_column": 36,
+              "filename": "conv3D.py"
+            },
+            "instrument": "No_Instrumentation",
+            "label": "_numpy_full_",
+            "location": {},
+            "environments": [],
+            "in_connectors": {},
+            "out_connectors": {
+              "__out": "float32"
+            }
+          },
+          "id": 6,
+          "scope_entry": "5",
+          "scope_exit": "7"
+        },
+        {
+          "type": "MapExit",
+          "label": "_numpy_full__map[__i0=0]",
+          "attributes": {
+            "in_connectors": {
+              "IN___tmp1": "float32"
+            },
+            "out_connectors": {
+              "OUT___tmp1": "float32"
+            }
+          },
+          "id": 7,
+          "scope_entry": "5",
+          "scope_exit": "7"
+        },
+        {
+          "type": "AccessNode",
+          "label": "r_tmp",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 79,
+              "end_line": 79,
+              "start_column": 36,
+              "end_column": 36,
+              "filename": "conv3D.py"
+            },
+            "data": "r_tmp",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 8,
+          "scope_entry": "19",
+          "scope_exit": "20"
+        },
+        {
+          "type": "MapEntry",
+          "label": "dace_simple_78_4_81[kd=0:3, kh=0:3, kw=0:3, ic=0:4]",
+          "attributes": {
+            "label": "dace_simple_78_4_81",
+            "params": [
+              "kd",
+              "kh",
+              "kw",
+              "ic"
+            ],
+            "range": {
+              "type": "Range",
+              "ranges": [
+                {
+                  "start": "0",
+                  "end": "2",
+                  "step": "1",
+                  "tile": "1"
+                },
+                {
+                  "start": "0",
+                  "end": "2",
+                  "step": "1",
+                  "tile": "1"
+                },
+                {
+                  "start": "0",
+                  "end": "2",
+                  "step": "1",
+                  "tile": "1"
+                },
+                {
+                  "start": "0",
+                  "end": "3",
+                  "step": "1",
+                  "tile": "1"
+                }
+              ]
+            },
+            "schedule": "Sequential",
+            "unroll": false,
+            "collapse": 1,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 81,
+              "end_line": 81,
+              "start_column": 8,
+              "end_column": 8,
+              "filename": "conv3D.py"
+            },
+            "is_collapsed": false,
+            "instrument": "No_Instrumentation",
+            "in_connectors": {
+              "IN___tmp1": "float32",
+              "IN___tmp2": {
+                "type": "pointer",
+                "dtype": "float32"
+              },
+              "IN___tmp_82_28_r_in_from_3_0": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            },
+            "out_connectors": {
+              "OUT___tmp1": "float32",
+              "OUT___tmp2": "float32",
+              "OUT___tmp_82_28_r_in_from_3_0": "float32"
+            }
+          },
+          "id": 9,
+          "scope_entry": "19",
+          "scope_exit": "10"
+        },
+        {
+          "type": "MapExit",
+          "label": "dace_simple_78_4_81[kd=0:3, kh=0:3, kw=0:3, ic=0:4]",
+          "attributes": {
+            "in_connectors": {
+              "IN___tmp1": "float32"
+            },
+            "out_connectors": {
+              "OUT___tmp1": "float32"
+            }
+          },
+          "id": 10,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "AccessNode",
+          "label": "r_tmp",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 81,
+              "end_line": 81,
+              "start_column": 8,
+              "end_column": 8,
+              "filename": "conv3D.py"
+            },
+            "data": "r_tmp",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 11,
+          "scope_entry": "19",
+          "scope_exit": "20"
+        },
+        {
+          "type": "Tasklet",
+          "label": "assign_83_8",
+          "attributes": {
+            "code": {
+              "string_data": "__out = __inp",
+              "language": "Python"
+            },
+            "state_fields": [],
+            "code_global": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_init": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_exit": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 83,
+              "end_line": 83,
+              "start_column": 27,
+              "end_column": 27,
+              "filename": "conv3D.py"
+            },
+            "instrument": "No_Instrumentation",
+            "label": "assign_83_8",
+            "location": {},
+            "environments": [],
+            "in_connectors": {
+              "__inp": "float32"
+            },
+            "out_connectors": {
+              "__out": "float32"
+            }
+          },
+          "id": 12,
+          "scope_entry": "19",
+          "scope_exit": "20"
+        },
+        {
+          "type": "Tasklet",
+          "label": "_Mult_",
+          "attributes": {
+            "code": {
+              "string_data": "__out = (__in1 * __in2)",
+              "language": "Python"
+            },
+            "state_fields": [],
+            "code_global": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_init": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_exit": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 82,
+              "end_line": 82,
+              "start_column": 82,
+              "end_column": 82,
+              "filename": "conv3D.py"
+            },
+            "instrument": "No_Instrumentation",
+            "label": "_Mult_",
+            "location": {},
+            "environments": [],
+            "in_connectors": {
+              "__in1": "float32",
+              "__in2": "float32"
+            },
+            "out_connectors": {
+              "__out": "float32"
+            }
+          },
+          "id": 13,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "AccessNode",
+          "label": "__tmp4",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 82,
+              "end_line": 82,
+              "start_column": 82,
+              "end_column": 82,
+              "filename": "conv3D.py"
+            },
+            "data": "__tmp4",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 14,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "Tasklet",
+          "label": "_Add_",
+          "attributes": {
+            "code": {
+              "string_data": "__out = (__in1 + __in2)",
+              "language": "Python"
+            },
+            "state_fields": [],
+            "code_global": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_init": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_exit": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 82,
+              "end_line": 82,
+              "start_column": 82,
+              "end_column": 82,
+              "filename": "conv3D.py"
+            },
+            "instrument": "No_Instrumentation",
+            "label": "_Add_",
+            "location": {},
+            "environments": [],
+            "in_connectors": {
+              "__in1": "float32",
+              "__in2": "float32"
+            },
+            "out_connectors": {
+              "__out": "float32"
+            }
+          },
+          "id": 15,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "AccessNode",
+          "label": "__tmp5",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 82,
+              "end_line": 82,
+              "start_column": 82,
+              "end_column": 82,
+              "filename": "conv3D.py"
+            },
+            "data": "__tmp5",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 16,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "Tasklet",
+          "label": "assign_82_12",
+          "attributes": {
+            "code": {
+              "string_data": "__out = __inp",
+              "language": "Python"
+            },
+            "state_fields": [],
+            "code_global": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_init": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "code_exit": {
+              "string_data": "",
+              "language": "CPP"
+            },
+            "debuginfo": {
+              "type": "DebugInfo",
+              "start_line": 82,
+              "end_line": 82,
+              "start_column": 82,
+              "end_column": 82,
+              "filename": "conv3D.py"
+            },
+            "instrument": "No_Instrumentation",
+            "label": "assign_82_12",
+            "location": {},
+            "environments": [],
+            "in_connectors": {
+              "__inp": "float32"
+            },
+            "out_connectors": {
+              "__out": "float32"
+            }
+          },
+          "id": 17,
+          "scope_entry": "9",
+          "scope_exit": "10"
+        },
+        {
+          "type": "AccessNode",
+          "label": "Output",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "Output",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 18,
+          "scope_entry": null,
+          "scope_exit": null
+        },
+        {
+          "type": "MapEntry",
+          "label": "dace_simple_78_oc[oc=0:8]",
+          "attributes": {
+            "label": "dace_simple_78_oc",
+            "params": [
+              "oc"
+            ],
+            "range": {
+              "type": "Range",
+              "ranges": [
+                {
+                  "start": "0",
+                  "end": "7",
+                  "step": "1",
+                  "tile": "1"
+                }
+              ]
+            },
+            "schedule": "GPU_Device",
+            "unroll": false,
+            "collapse": 1,
+            "debuginfo": null,
+            "is_collapsed": false,
+            "instrument": "No_Instrumentation",
+            "in_connectors": {
+              "IN_gpu_Input": {
+                "type": "pointer",
+                "dtype": "float32"
+              },
+              "IN_gpu_kernel": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            },
+            "out_connectors": {
+              "OUT_gpu_Input": {
+                "type": "pointer",
+                "dtype": "float32"
+              },
+              "OUT_gpu_kernel": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            }
+          },
+          "id": 19,
+          "scope_entry": "21",
+          "scope_exit": "20"
+        },
+        {
+          "type": "MapExit",
+          "label": "dace_simple_78_oc[oc=0:8]",
+          "attributes": {
+            "in_connectors": {
+              "IN_gpu_Output": "float32"
+            },
+            "out_connectors": {
+              "OUT_gpu_Output": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            }
+          },
+          "id": 20,
+          "scope_entry": "19",
+          "scope_exit": "20"
+        },
+        {
+          "type": "MapEntry",
+          "label": "dace_simple_78_d[d=0:30, h=0:30, w=0:30]",
+          "attributes": {
+            "label": "dace_simple_78_d",
+            "params": [
+              "d",
+              "h",
+              "w"
+            ],
+            "range": {
+              "type": "Range",
+              "ranges": [
+                {
+                  "start": "0",
+                  "end": "29",
+                  "step": "1",
+                  "tile": "1"
+                },
+                {
+                  "start": "0",
+                  "end": "29",
+                  "step": "1",
+                  "tile": "1"
+                },
+                {
+                  "start": "0",
+                  "end": "29",
+                  "step": "1",
+                  "tile": "1"
+                }
+              ]
+            },
+            "schedule": "GPU_Device",
+            "unroll": false,
+            "collapse": 1,
+            "debuginfo": null,
+            "is_collapsed": false,
+            "instrument": "No_Instrumentation",
+            "in_connectors": {
+              "IN_gpu_Input": {
+                "type": "pointer",
+                "dtype": "float32"
+              },
+              "IN_gpu_kernel": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            },
+            "out_connectors": {
+              "OUT_gpu_Input": {
+                "type": "pointer",
+                "dtype": "float32"
+              },
+              "OUT_gpu_kernel": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            }
+          },
+          "id": 21,
+          "scope_entry": null,
+          "scope_exit": "22"
+        },
+        {
+          "type": "MapExit",
+          "label": "dace_simple_78_d[d=0:30, h=0:30, w=0:30]",
+          "attributes": {
+            "in_connectors": {
+              "IN_gpu_Output": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            },
+            "out_connectors": {
+              "OUT_gpu_Output": {
+                "type": "pointer",
+                "dtype": "float32"
+              }
+            }
+          },
+          "id": 22,
+          "scope_entry": "21",
+          "scope_exit": "22"
+        },
+        {
+          "type": "AccessNode",
+          "label": "trans_gpu_Input",
+          "attributes": {
+            "setzero": false,
+            "debuginfo": null,
+            "data": "trans_gpu_Input",
+            "instrument": "No_Instrumentation",
+            "in_connectors": {},
+            "out_connectors": {}
+          },
+          "id": 23,
+          "scope_entry": "19",
+          "scope_exit": "20"
+        }
+      ],
+      "edges": [
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "131072",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "131072"
+              }
+            }
+          },
+          "src": "0",
+          "dst": "1",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "864",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "kernel",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "864"
+              }
+            }
+          },
+          "src": "2",
+          "dst": "3",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": null,
+                "other_subset": null,
+                "data": null,
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "5",
+          "dst": "6",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "262144",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "Output",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "262144"
+              }
+            }
+          },
+          "src": "4",
+          "dst": "18",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": null,
+                "other_subset": null,
+                "data": null,
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "19",
+          "dst": "5",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": null,
+                "other_subset": null,
+                "data": null,
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "21",
+          "dst": "19",
+          "dst_connector": null,
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "108",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "108"
+              }
+            }
+          },
+          "src": "8",
+          "dst": "9",
+          "dst_connector": "IN___tmp1",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "108",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "trans_gpu_Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "108"
+              }
+            }
+          },
+          "src": "23",
+          "dst": "9",
+          "dst_connector": "IN___tmp_82_28_r_in_from_3_0",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "23328000",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "31",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "23328000"
+              }
+            }
+          },
+          "src": "1",
+          "dst": "21",
+          "dst_connector": "IN_gpu_Input",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "23328000",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_kernel",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "23328000"
+              }
+            }
+          },
+          "src": "3",
+          "dst": "21",
+          "dst_connector": "IN_gpu_kernel",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "__tmp4",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "14",
+          "dst": "15",
+          "dst_connector": "__in2",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "11",
+          "dst": "12",
+          "dst_connector": "__inp",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "__tmp5",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "16",
+          "dst": "17",
+          "dst_connector": "__inp",
+          "src_connector": null
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "7",
+          "dst": "8",
+          "dst_connector": null,
+          "src_connector": "OUT___tmp1"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "108",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "108"
+              }
+            }
+          },
+          "src": "10",
+          "dst": "11",
+          "dst_connector": null,
+          "src_connector": "OUT___tmp1"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "9",
+          "dst": "15",
+          "dst_connector": "__in1",
+          "src_connector": "OUT___tmp1"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "kd",
+                      "end": "kd",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kh",
+                      "end": "kh",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kw",
+                      "end": "kw",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "ic",
+                      "end": "ic",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_kernel",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "kd",
+                      "end": "kd",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kh",
+                      "end": "kh",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kw",
+                      "end": "kw",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "ic",
+                      "end": "ic",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "9",
+          "dst": "13",
+          "dst_connector": "__in2",
+          "src_connector": "OUT___tmp2"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kd",
+                      "end": "kd",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kh",
+                      "end": "kh",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kw",
+                      "end": "kw",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "ic",
+                      "end": "ic",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "trans_gpu_Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kd",
+                      "end": "kd",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kh",
+                      "end": "kh",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "kw",
+                      "end": "kw",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "ic",
+                      "end": "ic",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "9",
+          "dst": "13",
+          "dst_connector": "__in1",
+          "src_connector": "OUT___tmp_82_28_r_in_from_3_0"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "108",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "108"
+              }
+            }
+          },
+          "src": "19",
+          "dst": "23",
+          "dst_connector": null,
+          "src_connector": "OUT_gpu_Input"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "864",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Input",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w + 2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "864"
+              }
+            }
+          },
+          "src": "21",
+          "dst": "19",
+          "dst_connector": "IN_gpu_Input",
+          "src_connector": "OUT_gpu_Input"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "216000",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Output",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "29",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "216000"
+              }
+            }
+          },
+          "src": "22",
+          "dst": "4",
+          "dst_connector": null,
+          "src_connector": "OUT_gpu_Output"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "8",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Output",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "8"
+              }
+            }
+          },
+          "src": "20",
+          "dst": "22",
+          "dst_connector": "IN_gpu_Output",
+          "src_connector": "OUT_gpu_Output"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "108",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_kernel",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "108"
+              }
+            }
+          },
+          "src": "19",
+          "dst": "9",
+          "dst_connector": "IN___tmp2",
+          "src_connector": "OUT_gpu_kernel"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "864",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_kernel",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "2",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "3",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "0",
+                      "end": "7",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "dst_subset": null,
+                "num_accesses": "864"
+              }
+            }
+          },
+          "src": "21",
+          "dst": "19",
+          "dst_connector": "IN_gpu_kernel",
+          "src_connector": "OUT_gpu_kernel"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "__tmp4",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "13",
+          "dst": "14",
+          "dst_connector": null,
+          "src_connector": "__out"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "__tmp5",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "15",
+          "dst": "16",
+          "dst_connector": null,
+          "src_connector": "__out"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "__i0",
+                      "end": "__i0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "__i0",
+                      "end": "__i0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "6",
+          "dst": "7",
+          "dst_connector": "IN___tmp1",
+          "src_connector": "__out"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "r_tmp",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "17",
+          "dst": "10",
+          "dst_connector": "IN___tmp1",
+          "src_connector": "__out"
+        },
+        {
+          "type": "MultiConnectorEdge",
+          "attributes": {
+            "data": {
+              "type": "Memlet",
+              "attributes": {
+                "volume": "1",
+                "dynamic": false,
+                "subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "other_subset": null,
+                "data": "gpu_Output",
+                "wcr": null,
+                "debuginfo": null,
+                "wcr_nonatomic": false,
+                "allow_oob": false,
+                "src_subset": null,
+                "dst_subset": {
+                  "type": "Range",
+                  "ranges": [
+                    {
+                      "start": "0",
+                      "end": "0",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "d",
+                      "end": "d",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "h",
+                      "end": "h",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "w",
+                      "end": "w",
+                      "step": "1",
+                      "tile": "1"
+                    },
+                    {
+                      "start": "oc",
+                      "end": "oc",
+                      "step": "1",
+                      "tile": "1"
+                    }
+                  ]
+                },
+                "num_accesses": "1"
+              }
+            }
+          },
+          "src": "12",
+          "dst": "20",
+          "dst_connector": "IN_gpu_Output",
+          "src_connector": "__out"
+        }
+      ],
+      "attributes": {
+        "is_collapsed": false,
+        "nosync": false,
+        "instrument": "No_Instrumentation",
+        "executions": "1",
+        "dynamic_executions": false,
+        "ranges": {},
+        "location": {}
+      }
+    }
+  ],
+  "edges": [],
+  "sdfg_list_id": 0,
+  "start_state": 0,
+  "dace_version": "0.13"
+}
