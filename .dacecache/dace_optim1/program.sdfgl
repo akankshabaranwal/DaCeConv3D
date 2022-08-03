@@ -1,0 +1,2 @@
+name,SDFG_intermediate,SDFG,source,argv_0,argv_1,argv_2
+dace_simple_0,/home/akanksha/spcl/dacelocal/.dacecache/dace_simple/program.sdfg,/home/akanksha/spcl/dacelocal/_dacegraphs/program.sdfg,/home/akanksha/.vscode/extensions/phschaad.sdfv-1.0.17/backend/run_dace.py,/home/akanksha/.vscode/extensions/phschaad.sdfv-1.0.17/backend/run_dace.py,-p,33714

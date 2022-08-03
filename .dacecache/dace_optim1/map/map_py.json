@@ -1,0 +1,121 @@
+{
+    "conv3D.py": {
+        "76": [
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 0
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 1
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 2
+            }
+        ],
+        "77": [
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 3
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 4
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 5
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 6
+            }
+        ],
+        "79": [
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 7
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 8
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 9
+            }
+        ],
+        "81": [
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 10
+            }
+        ],
+        "80": [
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 11
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 12
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 13
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 14
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 0,
+                "node_id": 15
+            }
+        ],
+        "75": [
+            {
+                "sdfg_id": 0,
+                "state_id": 1,
+                "node_id": 4
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 1,
+                "node_id": 5
+            },
+            {
+                "sdfg_id": 0,
+                "state_id": 1,
+                "node_id": 6
+            }
+        ]
+    },
+    "/home/akanksha/spcl/dacelocal/venv/lib/python3.8/site-packages/dace/sdfg/state.py": {
+        "1241": [
+            {
+                "sdfg_id": 0,
+                "state_id": 1,
+                "node_id": 7
+            }
+        ]
+    },
+    "/home/akanksha/spcl/dacelocal/samples/simple/conv3D.py": {}
+}
