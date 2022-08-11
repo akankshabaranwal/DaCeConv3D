@@ -53,7 +53,7 @@ def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_i
 
 
 # Dace profiling method, Returns median values in ms
-def rundacesdfgprofiling(dace_fun, Input, kernel, Output, inchannels,indepth,inheight,inwidth,outdepth, outheight, outwidth,outchannels,batchsize,reps):
+def rundacesdfgprofiling(dace_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, reps):
     # Temporarily set the DACE_profiling config to True
     with dace.config.set_temporary('profiling', value=True):
         # You can control the number of times a program is run with the treps configuration
@@ -104,7 +104,7 @@ def prepareinputs(currconv):
 @click.option('--csv', type=str, default='None')
 @click.option('--mode',
               type=click.Choice(
-                  ('benchmarkoptimized', 'verify', 'comparewithfixedsdfg')),
+                  ('verify', 'comparewithfixedsdfg')),
               default='verify')
 def cli(csv, mode):
     global kdim
