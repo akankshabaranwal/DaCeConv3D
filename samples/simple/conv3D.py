@@ -13,10 +13,18 @@ import pandas as pd
 import json
 import timeit
 from dace.sdfg.utils import load_precompiled_sdfg
-
+from dace.transformation.dataflow import (MapCollapse, MapExpansion) 
 # Define constants for filter dimensions
 global kdim
 kdim = 3
+
+#####################################################################
+# Data-centric optimization helpers copied from matmul.py 
+
+
+def find_map_by_param(sdfg: dace.SDFG, pname: str) -> dace.nodes.MapEntry:
+    """ Finds the first map entry node by the given parameter name. """
+    return next(n for n, _ in sdfg.all_nodes_recursive() if isinstance(n, dace.nodes.MapEntry) and pname in n.params)
 
 # Define symbolic sizes for arbitrary inputs
 d_indepth = dace.symbol('d_indepth')
@@ -30,14 +38,31 @@ d_batchsize = dace.symbol('d_batchsize')
 dtype = dace.float32
 np_dtype = np.float32
                 
-# Trying out some optimizations
+# Optimize code on the GPU
 def optimize_for_gpu(sdfg: dace.SDFG):
     """ Optimize 3D convolution example for GPUs. """
-    # Ensure integers are 32-bit by default
     dace.Config.set('compiler', 'default_data_types', value='C')
     sdfg.simplify()
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
+    
+    # Expand the maps
+    m_expandparams = find_map_by_param(sdfg, 'd')
+    MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
+
+    # Collapse the maps grouped appropriately
+    m_d = find_map_by_param(sdfg, 'd')
+    m_h = find_map_by_param(sdfg, 'h')
+    MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_h)
+    m_d = find_map_by_param(sdfg, 'd')
+    m_w = find_map_by_param(sdfg, 'w')
+    MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_w)
+    
+    # Schedule the collapsed maps on the GPU
+    m_h = find_map_by_param(sdfg, 'h')
+    m_oc = find_map_by_param(sdfg, 'oc')
+    m_h.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
 
 # Simple parallel 3D convolution
 @dace.program(device=dace.DeviceType.GPU)
@@ -94,7 +119,7 @@ def prepareinputs(currconv):
     Input = np.random.rand(batchsize, indepth, inheight, inwidth, inchannels).astype(np_dtype)
     kernel = np.random.rand(kdim, kdim, kdim, inchannels, outchannels).astype(np_dtype)
     Output = np.zeros((batchsize, outdepth, outheight, outwidth, outchannels), dtype=np_dtype)
-    print(f'3D Convolution {inchannels}x{indepth}x{inheight}x{inwidth} '
+    print(f'\n***** \n***** \n Begin 3D Convolution for Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
             f'with kernel {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
     return Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize
 
@@ -139,10 +164,8 @@ def cli(csv, mode):
             outchannels = np.int32(outchannels)
             batchsize = np.int32(batchsize)
             
-            print("For SDFGs code only parses first row of inputs")
             sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(Input,kernel,Output)
-            optimize_for_gpu(sdfg_fun)
-            sdfg_fun(Input=Input,kernel=kernel,Output=Output, d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight, d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+
             ## Prepare inputs for tensorflow fun
             input = tf.convert_to_tensor(Input)
             filter = tf.convert_to_tensor(kernel)
@@ -150,15 +173,17 @@ def cli(csv, mode):
             timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
             x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
             print("INFO: Tensorflow in ms: ", (np.median(x))*1000)
-            print("INFO: Running sdfg code with no optimizations")        
+            
+            print("INFO: Running baseline sdfg with no optimizations")        
+            rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 10)
+            rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 100)
+
+            optimize_for_gpu(sdfg_fun)
+            print("*\n*\n*")
+            print("INFO: Running optimized sdfg code")
             rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 10)
             rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 100)
             
-            #print("*\n*\n*")
-            #print("INFO: Running sdfg code with static optimizations")
-            #optimized_v1 = load_precompiled_sdfg('/users/abaranwa/dacelocal/samples/simple/dace_generic_optim1')
-            #rundacesdfgprofiling(optimized_v1, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 10)
-            #rundacesdfgprofiling(optimized_v1, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 100)
     return 0
 
 if __name__ == "__main__":
