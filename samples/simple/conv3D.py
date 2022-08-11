@@ -173,8 +173,9 @@ def cli(csv, mode):
             timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=5, number=1)
             x = timeit.Timer(lambda: timetfgpu_conv3D(input, filter)).repeat(repeat=100, number=2)
             print("INFO: Tensorflow in ms: ", (np.median(x))*1000)
-            
-            print("INFO: Running baseline sdfg with no optimizations")        
+            # Apply GPU transformation
+            sdfg_fun.apply_gpu_transformations()
+            print("INFO: Running GPU transformed baseline sdfg with no other optimizations")        
             rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 10)
             rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 100)
 
