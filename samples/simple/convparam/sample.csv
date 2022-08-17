@@ -1,3 +1,2 @@
 InChannel,InputDepth,InputHeight,InputWidth,KernelDepth,KernelHeight,KernelWidth,OutputChannel,OutputDepth,OutputHeight,OutputWidth
 4,32,32,32,3,3,3,8,32,32,32
-4,32,32,32,3,3,3,8,30,30,30
