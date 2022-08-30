@@ -1,5 +1,4 @@
 # Copyright 2019-2021 ETH Zurich and the DaCe authors. All rights reserved.
-
 # Convolution benchmarking and verif code for 3D convolution
 
 import click
