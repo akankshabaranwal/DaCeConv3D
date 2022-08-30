@@ -17,6 +17,7 @@ from dace.transformation.dataflow import (MapCollapse, MapExpansion, InLocalStor
 from dace.transformation import helpers as xfutil
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch.cuda.profiler as profiler
 
 # Define constants for filter dimensions
 global kdim
@@ -181,23 +182,36 @@ def prepareinputs(currconv):
     Input = np.random.rand(batchsize, indepth, inheight, inwidth, inchannels).astype(np_dtype)
     kernel = np.random.rand(kdim, kdim, kdim, inchannels, outchannels).astype(np_dtype)
     Output = np.zeros((batchsize, outdepth, outheight, outwidth, outchannels), dtype=np_dtype)
-    print(f'\n***** \n***** \n Begin 3D Convolution for Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
-            f'with kernel {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
+    print(f'\n***** \n***** \n Parsed 3D Convolution Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
+            f'and Kernel parameters {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
     return Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize
 
 
 # Ideally for each input it should first verify. only if verification is successful should it go to benchmark
 @click.command()
-@click.option('--csv', type=str, default='None')
+@click.option('--csv', type=str, default='sample')
 @click.option('--mode',
-              type=click.Choice(
-                  ('verify', 'comparewithfixedsdfg')),
+              type=click.Choice(('verify', 'comparewithfixedsdfg','profiletf','profiledaceoptimized')),
               default='verify')
 def cli(csv, mode):
     global kdim
-    if(csv == 'None'):
-        csv = 'sample'
-    if mode == 'verify':
+    if mode == 'profiletf':
+        convparams =  parsecsv(csv)
+        for index, currconv in convparams.iterrows():
+            Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(currconv)
+            convparams =  parsecsv(csv)
+            input = tf.convert_to_tensor(Input)
+            filter = tf.convert_to_tensor(kernel)
+            refop = tf.nn.conv3d(input, filter, strides=[1, 1, 1, 1, 1], padding="VALID")
+    elif mode == 'profiledaceoptimized':
+        convparams =  parsecsv(csv)
+
+        for index, currconv in convparams.iterrows():
+            Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(currconv)
+            sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(Input,kernel,Output)
+            optimize_for_gpu(sdfg_fun)
+            sdfg_fun(Input=Input, kernel=kernel, Output=Output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+    elif mode == 'verify':
         convparams =  parsecsv(csv)
         for index, currconv in convparams.iterrows():
             # Extract parameters to prepare data for convolution
@@ -246,6 +260,7 @@ def cli(csv, mode):
             dace_baseline = rundacesdfgprofiling(sdfg_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, 100)
             median_dace_unoptimized.append(np.median(dace_baseline)*1000)
 
+            # Apply optimizations
             optimize_for_gpu(sdfg_fun)
             print("*\n*\n*")
             print("INFO: Running optimized sdfg code")
@@ -278,6 +293,7 @@ def cli(csv, mode):
             figurename = f'runtime_{currname}.png'
             fig.savefig(figurename)
         
+        
         # set width of bar
         barWidth = 0.2
         fig = plt.subplots(figsize =(12, 8))
@@ -302,7 +318,7 @@ def cli(csv, mode):
         plt.legend()
         plt.yscale('log')
         plt.xticks(rotation=45, ha='right')
-        plt.savefig('median_runtime', bbox_inches='tight')
+        plt.savefig('server_median_runtime', bbox_inches='tight')
 
     return 0
 
