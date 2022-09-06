@@ -235,13 +235,15 @@ def cli(csv, mode):
         convnames = []
         for index, currconv in convparams.iterrows():    
             Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(currconv)
+            
             inchannels = np.int32(inchannels)
             indepth = np.int32(indepth)
             inheight = np.int32(inheight)
             inwidth = np.int32(inwidth)
             outchannels = np.int32(outchannels)
             batchsize = np.int32(batchsize)
-            sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(Input,kernel,Output)
+
+            sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(Input, kernel, Output)
 
             ## Prepare inputs for tensorflow fun
             input = tf.convert_to_tensor(Input)
