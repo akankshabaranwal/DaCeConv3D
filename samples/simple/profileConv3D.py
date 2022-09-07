@@ -39,8 +39,10 @@ for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
     ## Prepare inputs for tensorflow fun
-    t_input = tf.convert_to_tensor(d_input)
-    t_kernel = tf.convert_to_tensor(d_kernel)
+    tmp_input = d_input.cpu()
+    tmp_kernel = d_kernel.cpu()
+    t_input = tf.convert_to_tensor(tmp_input.detach().numpy())
+    t_kernel = tf.convert_to_tensor(tmp_kernel.detach().numpy())
 
     inchannels = np.int32(inchannels)
     indepth = np.int32(indepth)
@@ -82,7 +84,8 @@ for layern in range(currlayer, currlayer+1):
         print("INFO: Running verification to compare against tensorflow output")
         refop = tf.nn.conv3d(t_input, t_kernel, strides=[1, 1, 1, 1, 1], padding="VALID")
         sdfg_fun(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
-        opdace = tf.convert_to_tensor(d_output)
+        tmp_output = d_output.cpu()
+        opdace = tf.convert_to_tensor(tmp_output.detach().numpy())
         diff = np.linalg.norm(opdace - refop) / (batchsize * outchannels * indepth * inheight * inwidth )
         print('Difference between tensorflow and dace values:', diff)
         if(diff<=1e-4):

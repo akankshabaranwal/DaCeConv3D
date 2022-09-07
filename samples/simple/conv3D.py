@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch.cuda.profiler as profiler
 from typing import Tuple
+import torch
 
 # Define constants for filter dimensions
 global kdim
@@ -182,9 +183,10 @@ def prepareinputs(currconv):
     outwidth = inheight-kdim+1
     batchsize = 1
     # Prepare data with numpy
-    Input = np.random.rand(batchsize, indepth, inheight, inwidth, inchannels).astype(np_dtype)
-    kernel = np.random.rand(kdim, kdim, kdim, inchannels, outchannels).astype(np_dtype)
-    Output = np.zeros((batchsize, outdepth, outheight, outwidth, outchannels), dtype=np_dtype)
+    Input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
+    kernel = torch.rand(kdim, kdim, kdim, inchannels, outchannels).cuda()
+    Output = torch.zeros(batchsize, outdepth, outheight, outwidth, outchannels).cuda()
+    
     print(f'\n***** \n***** \n Parsed 3D Convolution Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
             f'and Kernel parameters {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
     return Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize
