@@ -39,8 +39,8 @@ for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
     ## Prepare inputs for tensorflow fun
-    tmp_input = d_input.cpu()
-    tmp_kernel = d_kernel.cpu()
+    tmp_input = d_input.cpu().clone()
+    tmp_kernel = d_kernel.cpu().clone()
     t_input = tf.convert_to_tensor(tmp_input.detach().numpy())
     t_kernel = tf.convert_to_tensor(tmp_kernel.detach().numpy())
 
@@ -116,7 +116,7 @@ for layern in range(currlayer, currlayer+1):
 
     # Comparitive profiling using time funcs
     if profiletimefuncs:
-        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
+        print(f"INFO: d_input is {d_input.is_cuda}")
         times = time_funcs([run_optimized_dace, run_tf],
                         func_names=["optimizeddace", "tf"],
                         warmups=warmupiter,
@@ -136,6 +136,7 @@ for layern in range(currlayer, currlayer+1):
 
     # nvprof using timefuncs for dace
     if nvtimefuncsdace:
+        print(f"INFO: d_input {d_input.is_cuda}, d_kernel {d_kernel.is_cuda}, d_output {d_output.is_cuda}")
         print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
         times = time_funcs([run_optimized_dace],
                         func_names=["optimizeddace"],
@@ -158,7 +159,7 @@ for layern in range(currlayer, currlayer+1):
         # print("*\n*\n*")
         # print("INFO: Running baseline sdfg code")
         # rundaceprofiling(run_dace, warmupiter)
-        # dace_runtime = rundaceprofiling(run_dace, totaliter)
+        # dace_runtime = rundaceprofiling(run_dace, totalite)
         # print("INFO: Dace time in ms: ",np.median(dace_runtime)*1000)
 
         print("*\n*\n*")

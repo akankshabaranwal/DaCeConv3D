@@ -132,7 +132,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     
 
 # Simple parallel 3D convolution
-@dace.program
+@dace.program(device=dace.DeviceType.GPU)
 def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_inchannels], 
                 kernel: dtype[kdim, kdim, kdim, d_inchannels, d_outchannels], 
                 Output: dtype[d_batchsize, d_indepth-kdim+1, d_inheight-kdim+1, d_inwidth-kdim+1, d_outchannels]):
