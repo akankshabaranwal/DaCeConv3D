@@ -2,25 +2,40 @@
 
 from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
-
-# Flags to set kind of profiling
-verify = False
-profileendtoend = False
-profiletimefuncs = True
-nvproftf = False
-nvprofdace = False
-nvprofoptimizeddace = False
-nvtimefuncstf = True
-nvtimefuncsdace = False
+import argparse
 
 # Prepare inputs and kernel
 csv = 'cosmoflow'
 warmupiter = 10
 totaliter = 100
 convparams =  parsecsv(csv)
-layern = 0
 
-for layern in range(0,1):
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('-currlayer','--cl', type=int, required=True, help='select which layer to profile')
+# Flags to set kind of profiling
+parser.add_argument('--verify', action='store_true', help='run verification')
+parser.add_argument('--profileendtoend', action='store_true', help='run end to end profiling')
+parser.add_argument('--profiletimefuncs', action='store_true', help='time funcs comparative summary time')
+parser.add_argument('--nvproftf', action='store_true', help='run tf code with warmup')
+parser.add_argument('--nvprofdace', action='store_true', help='run dace code with warmup')
+parser.add_argument('--nvprofoptimizeddace', action='store_true', help='run optimized dace code with warmup')
+parser.add_argument('--nvtimefuncstf', action='store_true', help='run tf code with markers')
+parser.add_argument('--nvtimefuncsdace', action='store_true', help='run dace code with markers')
+
+args = parser.parse_args()
+currlayer = args.cl
+verify = args.verify
+profileendtoend = args.profileendtoend
+profiletimefuncs = args.profiletimefuncs
+nvproftf = args.nvproftf
+nvprofdace = args.nvprofdace
+nvprofoptimizeddace = args.nvprofoptimizeddace
+nvtimefuncstf = args.nvtimefuncstf
+nvtimefuncsdace = args.nvtimefuncsdace
+
+
+
+for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
     ## Prepare inputs for tensorflow fun
