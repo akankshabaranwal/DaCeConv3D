@@ -66,7 +66,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
-    
+    return 
     # Expand the maps
     m_expandparams = find_map_by_param(sdfg, 'd')
     MapExpansion.apply_to(sdfg, map_entry=m_expandparams)

@@ -34,7 +34,6 @@ nvtimefuncstf = args.nvtimefuncstf
 nvtimefuncsdace = args.nvtimefuncsdace
 
 
-
 for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
