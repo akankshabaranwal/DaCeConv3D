@@ -37,7 +37,7 @@ nvtimefuncsdace = args.nvtimefuncsdace
 for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
-    ## Prepare inputs for tensorflow fun
+    ## Prepare inputs for tensorflow fun ABCD
     tmp_input = d_input.cpu().clone()
     tmp_kernel = d_kernel.cpu().clone()
     t_input = tf.convert_to_tensor(tmp_input.detach().numpy())
@@ -53,6 +53,7 @@ for layern in range(currlayer, currlayer+1):
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
     # Apply optimizations
     optimize_for_gpu(sdfg_fun)
+    optimized_dace = sdfg_fun.compile()
 
    # Function call for original dace conv3D
     def run_dace():
@@ -64,7 +65,7 @@ for layern in range(currlayer, currlayer+1):
      
      # Function calls to run the optimized dace function
     def run_optimized_dace():
-        sdfg_fun(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+        optimized_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
 
     # Dace profiling method, Returns median values in ms
     def rundaceprofiling(run_dace_fun, reps):
@@ -111,7 +112,9 @@ for layern in range(currlayer, currlayer+1):
         for i in range(0, warmupiter):
             run_optimized_dace()
         for i in range(0, totaliter):
+            torch.cuda.nvtx.range_push('dace optim')
             run_optimized_dace()
+            torch.cuda.nvtx.range_pop()
 
     # Comparitive profiling using time funcs
     if profiletimefuncs:

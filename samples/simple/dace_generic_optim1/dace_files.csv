@@ -1,2 +1,0 @@
-cpu,,dace_simple.cpp
-cuda,,dace_simple_cuda.cu

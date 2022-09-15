@@ -62,11 +62,11 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     """ Optimize 3D convolution example for GPUs. """
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
-    #sdfg.apply_transformations(MapReduceFusion)
+    sdfg.apply_transformations(MapReduceFusion)
 
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
-    return 
+    return
     # Expand the maps
     m_expandparams = find_map_by_param(sdfg, 'd')
     MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
@@ -85,6 +85,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     m_oc = find_map_by_param(sdfg, 'oc')
     m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
     
+    return 
     #MapInterchange.apply_to(sdfg, outer_map_entry = m_n, inner_map_entry = m_d)
     #return
     #m_n = find_map_by_param(sdfg, 'n')
@@ -95,52 +96,54 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     #m_d.map.schedule = dace.ScheduleType.GPU_Device
 
     # return    
-    # # Create naive tiling strategy inspired from matmul
-    # entry = find_map_by_param(sdfg, 'd')
-    # xfutil.tile(sdfg, entry, True, True, d=32, h=32, w=32)
-    # xfutil.tile(sdfg, entry, True, True, d=4, h=4, w=4)
+    # Create naive tiling strategy inspired from matmul
+    #entry = find_map_by_param(sdfg, 'd')
+    #xfutil.tile(sdfg, entry, True, True, d=32, h=32, w=32)
+    #xfutil.tile(sdfg, entry, True, True, d=4, h=4, w=4)
+    #gtile_d = find_map_by_param(sdfg, 'tile_d')
+    #gtile_h = find_map_by_param(sdfg, 'tile_h')
+    #MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_h, permissive=True)
+    #
+    #gtile_d = find_map_by_param(sdfg, 'tile_d')
+    #gtile_w = find_map_by_param(sdfg, 'tile_w')
+    #MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_w, permissive=True)
+    #
+    #gtile_d = find_map_by_param(sdfg, 'tile_d')
+    #gtile_d.map.schedule = dace.ScheduleType.GPU_Device
+    #btile_d = find_map_by_param(sdfg, 'tile1_d')
+    #btile_h = find_map_by_param(sdfg, 'tile1_h')
+    #MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_h, permissive=True)
+    #
+    #btile_d = find_map_by_param(sdfg, 'tile1_d')
+    #btile_w = find_map_by_param(sdfg, 'tile1_w')
+    #MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_w, permissive=True)    
+    #btile = find_map_by_param(sdfg, 'tile1_d')
+    #btile.map.schedule = dace.ScheduleType.GPU_ThreadBlock
 
-    # gtile_d = find_map_by_param(sdfg, 'tile_d')
-    # gtile_h = find_map_by_param(sdfg, 'tile_h')
-    # MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_h, permissive=True)
-    # gtile_d = find_map_by_param(sdfg, 'tile_d')
-    # gtile_w = find_map_by_param(sdfg, 'tile_w')
-    # MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_w, permissive=True)
-    # gtile_d = find_map_by_param(sdfg, 'tile_d')
-    # gtile_d.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    ## Schedule the collapsed maps on the GPU
+    #m_h = find_map_by_param(sdfg, 'h')
+    #m_oc = find_map_by_param(sdfg, 'oc')
+    #m_h.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    #m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
 
-    # btile_d = find_map_by_param(sdfg, 'tile1_d')
-    # btile_h = find_map_by_param(sdfg, 'tile1_h')
-    # MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_h, permissive=True)
-    # btile_d = find_map_by_param(sdfg, 'tile1_d')
-    # btile_w = find_map_by_param(sdfg, 'tile1_w')
-    # MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_w, permissive=True)    
-    # btile = find_map_by_param(sdfg, 'tile1_d')
-    # btile.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-
-    # # Schedule the collapsed maps on the GPU
-    # #m_h = find_map_by_param(sdfg, 'h')
-    # m_oc = find_map_by_param(sdfg, 'oc')
-    # #m_h.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-    # m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-
-    # # Add local storage (shared memory) for input on GPU
-    # #dtile = find_map_by_param(sdfg, 'tile_d')
-    # #smem_input = InLocalStorage.apply_to(sdfg, dict(array='Input'), node_a=dtile, node_b=btile)
-    # #sdfg.arrays[smem_input.data].storage = dace.StorageType.GPU_Shared
+    #return
+    ## Add local storage (shared memory) for input on GPU
+    #dtile = find_map_by_param(sdfg, 'tile_d')
+    #smem_input = InLocalStorage.apply_to(sdfg, dict(array='Input'), node_a=dtile, node_b=btile)
+    #sdfg.arrays[smem_input.data].storage = dace.StorageType.GPU_Shared
 
     
 
 # Simple parallel 3D convolution
 @dace.program(device=dace.DeviceType.GPU)
-def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_inchannels], 
-                kernel: dtype[kdim, kdim, kdim, d_inchannels, d_outchannels], 
-                Output: dtype[d_batchsize, d_indepth-kdim+1, d_inheight-kdim+1, d_inwidth-kdim+1, d_outchannels]):
+def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_inchannels] @dace.StorageType.GPU_Global, 
+                kernel: dtype[kdim, kdim, kdim, d_inchannels, d_outchannels] @dace.StorageType.GPU_Global, 
+                Output: dtype[d_batchsize, d_indepth-kdim+1, d_inheight-kdim+1, d_inwidth-kdim+1, d_outchannels] @dace.StorageType.GPU_Global):
     for n, d, h, w, oc in dace.map[0:d_batchsize, 0:d_indepth-kdim+1, 0:d_inheight-kdim+1, 0:d_inwidth-kdim+1, 0:d_outchannels]:
         r_tmp = np.zeros([1], dtype=Input.dtype)
-        r_kernel = np.copy(kernel[:,:,:,:,oc])
+        #r_kernel = np.copy(kernel[:,:,:,:,oc])
         for kd, kh, kw, ic in dace.map[0:kdim, 0:kdim, 0:kdim, 0:d_inchannels]:
-            r_tmp = r_tmp + Input[n, d+kd, h+kh, w+kw, ic] * r_kernel[kd, kh, kw, ic]
+            r_tmp = r_tmp + Input[n, d+kd, h+kh, w+kw, ic] * kernel[kd, kh, kw, ic, oc]
         Output[n, d, h, w, oc] = r_tmp
 
 
