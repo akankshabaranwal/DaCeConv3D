@@ -35,8 +35,56 @@ timefuncsoptimizeddace = args.timefuncsoptimizeddace
 warmupiter = args.warmupiter
 totaliter = args.totaliter
 currlayer = 0
+lastlayer = convparams.shape[0]
 
-for layern in range(currlayer, currlayer+1):
+d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0])
+
+## Prepare inputs for tensorflow fun
+tmp_input = d_input.cpu().clone()
+tmp_kernel = d_kernel.cpu().clone()
+t_input = tf.convert_to_tensor(tmp_input.detach().numpy())
+t_kernel = tf.convert_to_tensor(tmp_kernel.detach().numpy())
+
+inchannels = np.int32(inchannels)
+indepth = np.int32(indepth)
+inheight = np.int32(inheight)
+inwidth = np.int32(inwidth)
+outchannels = np.int32(outchannels)
+batchsize = np.int32(batchsize)
+
+sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
+sdfg_fun1: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
+baseline_dace = sdfg_fun1.compile()
+# Apply optimizations
+optimize_for_gpu(sdfg_fun)
+optimized_dace = sdfg_fun.compile()
+
+# Function call for original dace conv3D
+def run_dace():
+    baseline_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+
+# Function call for tensorflow 3D conv
+def run_tf():
+    op=tf.nn.conv3d(t_input, t_kernel, strides=[1, 1, 1, 1, 1], padding="VALID")
+ 
+# Function calls to run the optimized dace function
+def run_optimized_dace():
+    optimized_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+
+# Dace profiling method, Returns median values in ms
+def rundaceprofiling(run_dace_fun, reps):
+    # Temporarily set the DACE_profiling config to True
+    with dace.config.set_temporary('profiling', value=True):
+        # You can control the number of times a program is run with the treps configuration
+        with dace.config.set_temporary('treps', value=reps):
+            run_dace_fun()
+    list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
+    latest_file = max(list_of_files, key=os.path.getctime)
+    df = pd.read_csv(latest_file)
+    return df['Runtime_sec']
+
+
+for layern in range(currlayer, lastlayer):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
 
     ## Prepare inputs for tensorflow fun ABCD
@@ -51,37 +99,6 @@ for layern in range(currlayer, currlayer+1):
     inwidth = np.int32(inwidth)
     outchannels = np.int32(outchannels)
     batchsize = np.int32(batchsize)
-
-    sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
-    sdfg_fun1: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
-    baseline_dace = sdfg_fun1.compile()
-    # Apply optimizations
-    optimize_for_gpu(sdfg_fun)
-    optimized_dace = sdfg_fun.compile()
-
-   # Function call for original dace conv3D
-    def run_dace():
-        baseline_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
-
-    # Function call for tensorflow 3D conv
-    def run_tf():
-        op=tf.nn.conv3d(t_input, t_kernel, strides=[1, 1, 1, 1, 1], padding="VALID")
-     
-     # Function calls to run the optimized dace function
-    def run_optimized_dace():
-        optimized_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
-
-    # Dace profiling method, Returns median values in ms
-    def rundaceprofiling(run_dace_fun, reps):
-        # Temporarily set the DACE_profiling config to True
-        with dace.config.set_temporary('profiling', value=True):
-            # You can control the number of times a program is run with the treps configuration
-            with dace.config.set_temporary('treps', value=reps):
-                run_dace_fun()
-        list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
-        latest_file = max(list_of_files, key=os.path.getctime)
-        df = pd.read_csv(latest_file)
-        return df['Runtime_sec']
 
     # Code for verification
     if verify:

@@ -184,7 +184,7 @@ def prepareinputs(currconv):
     outdepth = indepth-kdim+1
     outheight = inheight-kdim+1
     outwidth = inheight-kdim+1
-    batchsize = 8
+    batchsize = 1
     # Prepare data with numpy
     Input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
     kernel = torch.rand(kdim, kdim, kdim, inchannels, outchannels).cuda()
