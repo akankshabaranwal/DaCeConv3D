@@ -3,7 +3,11 @@
 from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
-import statistics
+import time
+import math
+import os
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-csv','--csv', type=str, default='cosmoflow', help='select which csv to profile')
@@ -14,8 +18,17 @@ parser.add_argument('--comparetimefuncs', action='store_true', help='time funcs 
 parser.add_argument('--timefuncstf', action='store_true', help='run tf code with markers')
 parser.add_argument('--setlaunchwait', action='store_true', help='set launch wait')
 parser.add_argument('--timefuncsoptimdace', action='store_true', help='run dace code with markers')
-
+parser.add_argument('--plot', action='store_true', help='create plots')
+# Charts
+# Create an outdir with output plots
+# Get violin plots of all of the data points
+# Get a summary table comparing different versions
+# Get a summary plot comparing different versions
+# Create the output folder with current time stamp
+# Write all of the args to a file
+# Input dimension should also be in the summary table
 args = parser.parse_args()
+
 csv = args.csv
 convparams =  parsecsv(csv)
 verify = args.verify
@@ -32,6 +45,15 @@ totaliter = args.totaliter
 currlayer = 0
 lastlayer = convparams.shape[0]
 
+outdir = f'./outputplots/out{math.floor(time.time())}'
+os.mkdir(outdir)
+with open(f'./{outdir}/params.txt', 'w') as f:
+    f.writelines(f'csv: {csv}\n')
+    f.writelines(f'warmup iteration: {warmupiter}\n')
+    f.writelines(f'total iteration: {totaliter}\n')
+    f.writelines(f'set launch wait: {setlaunchwait}\n')
+
+args = parser.parse_args()
 d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0])
 
 ## Prepare inputs for tensorflow fun
@@ -94,7 +116,7 @@ for layern in range(currlayer, lastlayer):
     inwidth = np.int32(inwidth)
     outchannels = np.int32(outchannels)
     batchsize = np.int32(batchsize)
-
+    
     # Code for verification
     if verify:
         print("INFO: Running verification to compare against tensorflow output")
@@ -131,44 +153,45 @@ for layern in range(currlayer, lastlayer):
             run_optim_dace()
 
     # Comparitive profiling using time funcs
+    print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
+    print(f"INFO: Statistics for layer number {layern}")
     if comparetimefuncs:
         times = time_funcs([run_optim_dace, run_tf],
                         func_names=["optimdace", "tf"],
                         warmups=warmupiter,
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
-        print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "optimdace", "tf"])
+        # TODO: Summary plot and csv should get created here
+        # TODO: All comparison plots should be here
 
     # run using timefuncs for tf
     if timefuncstf:
-        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
         times = time_funcs([run_tf],
                         func_names=["tf"],
                         warmups=warmupiter,
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
-        print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "tf"])
+        # TODO: All individual violin plots for each layer
+        # TODO: Fix the violin plot if its showing negative axis as well 
 
      # run using timefuncs for dace
     if timefuncsdace:
-        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
         times = time_funcs([run_dace],
                         func_names=["baselinedace"],
                         warmups=warmupiter,
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
-        print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "baselinedace"])
 
     # run using timefuncs for dace
     if timefuncsoptimdace:
-        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
         times = time_funcs([run_optim_dace],
                         func_names=["optimdace"],
                         warmups=warmupiter,
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
-        print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "optimdace"])
+        # TODO: All individual violin plots for each layer
+        # TODO: Fix the violin plot if its showing negative axis as well 
