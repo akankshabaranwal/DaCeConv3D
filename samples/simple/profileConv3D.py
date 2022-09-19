@@ -9,29 +9,24 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-csv','--csv', type=str, default='cosmoflow', help='select which csv to profile')
 parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
 parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
-# Flags to set kind of profiling
 parser.add_argument('--verify', action='store_true', help='run verification')
-parser.add_argument('--profileendtoend', action='store_true', help='run end to end profiling')
-parser.add_argument('--profiletimefuncs', action='store_true', help='time funcs comparative summary time')
-parser.add_argument('--runtf', action='store_true', help='run tf code with warmup')
-parser.add_argument('--rundace', action='store_true', help='run dace code with warmup')
-parser.add_argument('--runoptimizeddace', action='store_true', help='run optimized dace code with warmup')
+parser.add_argument('--comparetimefuncs', action='store_true', help='time funcs comparative summary time')
 parser.add_argument('--timefuncstf', action='store_true', help='run tf code with markers')
-parser.add_argument('--timefuncsdace', action='store_true', help='run dace code with markers')
-parser.add_argument('--timefuncsoptimizeddace', action='store_true', help='run dace code with markers')
+parser.add_argument('--setlaunchwait', action='store_true', help='set launch wait')
+parser.add_argument('--timefuncsoptimdace', action='store_true', help='run dace code with markers')
 
 args = parser.parse_args()
 csv = args.csv
 convparams =  parsecsv(csv)
 verify = args.verify
-profileendtoend = args.profileendtoend
-profiletimefuncs = args.profiletimefuncs
-runtf = args.runtf
-rundace = args.rundace
-runoptimizeddace = args.runoptimizeddace
+comparetimefuncs = args.comparetimefuncs
+runtf = False
+rundace = False
+runoptimdace = False
 timefuncstf = args.timefuncstf
-timefuncsdace = args.timefuncsdace
-timefuncsoptimizeddace = args.timefuncsoptimizeddace
+timefuncsdace = False
+timefuncsoptimdace = args.timefuncsoptimdace
+setlaunchwait = args.setlaunchwait
 warmupiter = args.warmupiter
 totaliter = args.totaliter
 currlayer = 0
@@ -57,7 +52,7 @@ sdfg_fun1: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
 baseline_dace = sdfg_fun1.compile()
 # Apply optimizations
 optimize_for_gpu(sdfg_fun)
-optimized_dace = sdfg_fun.compile()
+optim_dace = sdfg_fun.compile()
 
 # Function call for original dace conv3D
 def run_dace():
@@ -67,9 +62,9 @@ def run_dace():
 def run_tf():
     op=tf.nn.conv3d(t_input, t_kernel, strides=[1, 1, 1, 1, 1], padding="VALID")
  
-# Function calls to run the optimized dace function
-def run_optimized_dace():
-    optimized_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+# Function calls to run the optim dace function
+def run_optim_dace():
+    optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
 
 # Dace profiling method, Returns median values in ms
 def rundaceprofiling(run_dace_fun, reps):
@@ -104,7 +99,7 @@ for layern in range(currlayer, lastlayer):
     if verify:
         print("INFO: Running verification to compare against tensorflow output")
         refop = tf.nn.conv3d(t_input, t_kernel, strides=[1, 1, 1, 1, 1], padding="VALID")
-        optimized_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
+        optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
         tmp_output = d_output.cpu()
         opdace = tf.convert_to_tensor(tmp_output.detach().numpy())
         diff = np.linalg.norm(opdace - refop) / (batchsize * outchannels * indepth * inheight * inwidth )
@@ -128,22 +123,22 @@ for layern in range(currlayer, lastlayer):
         for i in range(0, totaliter):
             run_dace()
 
-    # Profiling optimized dace using run
-    if runoptimizeddace:
+    # Profiling optim dace using run
+    if runoptimdace:
         for i in range(0, warmupiter):
-            run_optimized_dace()
+            run_optim_dace()
         for i in range(0, totaliter):
-            run_optimized_dace()
+            run_optim_dace()
 
     # Comparitive profiling using time funcs
-    if profiletimefuncs:
-        times = time_funcs([run_optimized_dace, run_tf],
-                        func_names=["optimizeddace", "tf"],
+    if comparetimefuncs:
+        times = time_funcs([run_optim_dace, run_tf],
+                        func_names=["optimdace", "tf"],
                         warmups=warmupiter,
                         num_iters=totaliter,
-                        launch_wait=True)
+                        launch_wait=setlaunchwait)
         print(f"INFO: Statistics for layer number {layern}")
-        print_time_statistics(times, [ "optimizeddace", "tf"])
+        print_time_statistics(times, [ "optimdace", "tf"])
 
     # run using timefuncs for tf
     if timefuncstf:
@@ -151,7 +146,8 @@ for layern in range(currlayer, lastlayer):
         times = time_funcs([run_tf],
                         func_names=["tf"],
                         warmups=warmupiter,
-                        num_iters=totaliter)
+                        num_iters=totaliter,
+                        launch_wait=setlaunchwait)
         print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "tf"])
 
@@ -162,40 +158,17 @@ for layern in range(currlayer, lastlayer):
                         func_names=["baselinedace"],
                         warmups=warmupiter,
                         num_iters=totaliter,
-                        launch_wait=True)
+                        launch_wait=setlaunchwait)
         print(f"INFO: Statistics for layer number {layern}")
         print_time_statistics(times, [ "baselinedace"])
 
     # run using timefuncs for dace
-    if timefuncsoptimizeddace:
+    if timefuncsoptimdace:
         print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
-        times = time_funcs([run_optimized_dace],
-                        func_names=["optimizeddace"],
+        times = time_funcs([run_optim_dace],
+                        func_names=["optimdace"],
                         warmups=warmupiter,
                         num_iters=totaliter,
-                        launch_wait=True)
+                        launch_wait=setlaunchwait)
         print(f"INFO: Statistics for layer number {layern}")
-        print_time_statistics(times, [ "optimizeddace"])
-
-
-    # Code for end to end runtime
-    if profileendtoend:
-        print(f"INFO: End to end profiling")
-        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")        
-
-        ## TF warm up
-        timeit.Timer(lambda: timetfgpu_conv3D(t_input, t_kernel)).repeat(repeat=5, number=1)
-        tf_runtime = timeit.Timer(lambda: timetfgpu_conv3D(t_input, t_kernel)).repeat(repeat=100, number=2)
-        print("INFO: Tensorflow in ms: ", (np.median(tf_runtime))*1000)
-
-        # print("*\n*\n*")
-        # print("INFO: Running baseline sdfg code")
-        # rundaceprofiling(run_dace, warmupiter)
-        # dace_runtime = rundaceprofiling(run_dace, totalite)
-        # print("INFO: Dace time in ms: ",np.median(dace_runtime)*1000)
-
-        print("*\n*\n*")
-        print("INFO: Running optimized sdfg code")
-        rundaceprofiling(run_optimized_dace, warmupiter)
-        dace_optimized = rundaceprofiling(run_optimized_dace, totaliter)
-        print("INFO: Dace time in ms: ",np.median(dace_optimized)*1000)
+        print_time_statistics(times, [ "optimdace"])
