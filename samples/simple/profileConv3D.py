@@ -3,7 +3,7 @@
 from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
-
+import statistics
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-csv','--csv', type=str, default='cosmoflow', help='select which csv to profile')
@@ -123,7 +123,7 @@ for layern in range(currlayer, lastlayer):
         for i in range(0, totaliter):
             run_dace()
 
-    # Profiling optim dace using run
+    # Profiling optimized dace using run
     if runoptimdace:
         for i in range(0, warmupiter):
             run_optim_dace()
