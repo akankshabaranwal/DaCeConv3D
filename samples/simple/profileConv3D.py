@@ -4,14 +4,11 @@ from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
 
-# Prepare inputs and kernel
-csv = 'cosmoflow'
-warmupiter = 10
-totaliter = 100
-convparams =  parsecsv(csv)
 
 parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('-currlayer','--cl', type=int, required=True, help='select which layer to profile')
+parser.add_argument('-csv','--csv', type=str, default='cosmoflow', help='select which csv to profile')
+parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
+parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
 # Flags to set kind of profiling
 parser.add_argument('--verify', action='store_true', help='run verification')
 parser.add_argument('--profileendtoend', action='store_true', help='run end to end profiling')
@@ -24,7 +21,8 @@ parser.add_argument('--timefuncsdace', action='store_true', help='run dace code 
 parser.add_argument('--timefuncsoptimizeddace', action='store_true', help='run dace code with markers')
 
 args = parser.parse_args()
-currlayer = args.cl
+csv = args.csv
+convparams =  parsecsv(csv)
 verify = args.verify
 profileendtoend = args.profileendtoend
 profiletimefuncs = args.profiletimefuncs
@@ -34,7 +32,9 @@ runoptimizeddace = args.runoptimizeddace
 timefuncstf = args.timefuncstf
 timefuncsdace = args.timefuncsdace
 timefuncsoptimizeddace = args.timefuncsoptimizeddace
-
+warmupiter = args.warmupiter
+totaliter = args.totaliter
+currlayer = 0
 
 for layern in range(currlayer, currlayer+1):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
