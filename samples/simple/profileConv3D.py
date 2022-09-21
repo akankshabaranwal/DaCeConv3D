@@ -9,9 +9,10 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import statistics
+import csv
 
 parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('-csv','--csv', type=str, default='cosmoflow', help='select which csv to profile')
+parser.add_argument('-paramscsv','--paramscsv', type=str, default='cosmoflow', help='select which csv to profile')
 parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
 parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
 parser.add_argument('--verify', action='store_true', help='run verification')
@@ -31,8 +32,8 @@ parser.add_argument('--enableplots', action='store_true', help='disable creating
 # Input dimension should also be in the summary table
 args = parser.parse_args()
 
-csv = args.csv
-convparams =  parsecsv(csv)
+paramscsv = args.paramscsv
+convparams =  parsecsv(paramscsv)
 verify = args.verify
 compareprof = args.compareprof
 runtf = False
@@ -48,14 +49,13 @@ currlayer = 0
 enableplots = args.enableplots
 lastlayer = convparams.shape[0]
 
-if enableplots:
-    outdir = f'./outputplots/out{math.floor(time.time())}'
-    os.mkdir(outdir)
-    with open(f'./{outdir}/params.txt', 'w') as f:
-        f.writelines(f'csv: {csv}\n')
-        f.writelines(f'warmup iteration: {warmupiter}\n')
-        f.writelines(f'total iteration: {totaliter}\n')
-        f.writelines(f'set launch wait: {setlaunchwait}\n')
+outdir = f'./outputplots/out{math.floor(time.time())}'
+os.mkdir(outdir)
+with open(f'./{outdir}/params.txt', 'w') as f:
+    f.writelines(f'csv: {csv}\n')
+    f.writelines(f'warmup iteration: {warmupiter}\n')
+    f.writelines(f'total iteration: {totaliter}\n')
+    f.writelines(f'set launch wait: {setlaunchwait}\n')
 
 args = parser.parse_args()
 d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0])
@@ -109,15 +109,15 @@ def run_fun(fun_name):
         fun_name()
     for i in range(0, totaliter):
         fun_name()
-
     
 median_dace = []
 median_tf = []
 layer_names = []
-
+csv_columns = ['layer_name','dace_median','tf_median']
+summary = []
 for layern in range(currlayer, lastlayer):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
-
+    layersummary = {}
     ## Prepare inputs for tensorflow fun ABCD
     tmp_input = d_input.cpu().clone()
     tmp_kernel = d_kernel.cpu().clone()
@@ -172,6 +172,9 @@ for layern in range(currlayer, lastlayer):
         print_time_statistics(times, [ "dace", "tf"])
         median_dace.append(statistics.median(times[0]))
         median_tf.append(statistics.median(times[1]))
+        layersummary['layer_name'] = layer_name
+        layersummary['dace_median'] = statistics.median(times[0])
+        layersummary['tf_median'] = statistics.median(times[1])
         if enableplots:
             d = {'tensorflow': pd.Series(times[1]), 'dace': pd.Series(times[0])}
             df = pd.DataFrame(d)
@@ -192,6 +195,7 @@ for layern in range(currlayer, lastlayer):
             figurename = f'{outdir}/allviolin_{layer_name}.png'
             fig.savefig(figurename)
             
+            summary.append(layersummary)
 
     # run using prof for tf
     if proftf:
@@ -216,7 +220,20 @@ for layern in range(currlayer, lastlayer):
         median_dace.append(statistics.median(times[0]))
         # TODO: All individual violin plots for each layer
         # TODO: Fix the violin plot if its showing negative axis as well
-    
+
+#TODO: create summary csv with all values mean median mode
+def addlabels(x,y):
+    for i in range(len(x)):
+        y[i] =round(y[i],2)
+        plt.text(i,y[i],y[i])
+
+csv_file = f'{outdir}/summary.csv'
+with open(csv_file, 'w') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+    writer.writeheader()
+    for data in summary:
+        writer.writerow(data)
+
 if enableplots: 
     if len(median_dace) != 0 and len(median_tf) !=0:
         print("INFO: Plotting summary graph")
@@ -228,11 +245,10 @@ if enableplots:
         br2 = [x + barWidth for x in br1]
         
         # Make the plot
-        plt.bar(br1, median_tf, color ='r', width = barWidth,
-                edgecolor ='grey', label ='tensorflow')
-        plt.bar(br2, median_dace, color ='g', width = barWidth,
-                edgecolor ='grey', label ='dace')
-        
+        plt.bar(br1, median_tf, color ='r', width = barWidth, edgecolor ='grey', label ='tensorflow')
+        plt.bar(br2, median_dace, color ='g', width = barWidth, edgecolor ='grey', label ='dace')
+        addlabels(br1, median_tf)
+        addlabels(br2, median_dace) 
         # Adding Xticks
         plt.xlabel('Variation across different dimensions', fontweight ='bold', fontsize = 15)
         plt.ylabel('Log of median runtime in ms', fontweight ='bold', fontsize = 15)
@@ -241,6 +257,8 @@ if enableplots:
         plt.legend()
         plt.yscale('log')
         plt.xticks(rotation=45, ha='right')
+        #for index, value in enumerate(median_tf):
+        #    plt.text(value, index, str(value))
         plt.savefig(f'{outdir}/median_runtime', bbox_inches='tight')
 
     elif len(median_dace)!=0 or len(median_tf)!=0:
