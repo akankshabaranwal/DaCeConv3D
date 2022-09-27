@@ -204,11 +204,11 @@ with open(csv_file, 'w') as csvfile:
         del data['times']
         writer.writerow(data)
 
-nrow = 2
+nrow = 1
 ncol = lastlayer-currlayer
 row = 0
 col = 0
-fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True)
+fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True, sharex=True)
 if enableplots:
     layern = 0
     for layersummary in summary:
@@ -222,12 +222,12 @@ if enableplots:
         if (row==nrow):
             print("WARNING: Some plots could not be generated")
             exit()
-        axtf = sns.violinplot(ax = axes[row,col], y=df["tensorflow"], cut=0, color = 'skyblue')
-        axtf.set(xlabel='tensorflow', ylabel='runtime in ms')
-        axtf.set_title(f'{paramscsv}layer{layern}')
-        axd = sns.violinplot(ax = axes[row+1,col], y=df["dace"], cut=0, color = 'green')
-        axd.set(xlabel='dace', ylabel='runtime in ms')
-        axd.set_title(f'{paramscsv}layer{layern}')
+        axtf = sns.violinplot(ax = axes[col], y=df["tensorflow"], cut=0, color = 'skyblue')
+        #axtf.set(xlabel=f'{paramscsv}layer{layern}', ylabel='runtime in ms')
+        #axtf.set_title(f'{paramscsv}layer{layern}')
+        axd = sns.violinplot(ax = axes[col], y=df["dace"], cut=0, color = 'pink')
+        axd.set( ylabel=f'runtime for {paramscsv}layer{layern}')
+        #axd.set_title(f'{paramscsv}layer{layern}')
         layern = layern+1
         col = col+1
 
@@ -244,12 +244,12 @@ if enableplots:
         br2 = [x + barWidth for x in br1]
         
         # Make the plot
-        plt.bar(br1, median_tf, color ='r', width = barWidth, edgecolor ='grey', label ='tensorflow')
-        plt.bar(br2, median_dace, color ='g', width = barWidth, edgecolor ='grey', label ='dace')
+        plt.bar(br1, median_tf, color ='skyblue', width = barWidth, edgecolor ='grey', label ='tensorflow')
+        plt.bar(br2, median_dace, color ='pink', width = barWidth, edgecolor ='grey', label ='dace')
         addlabels(br1, median_tf)
         addlabels(br2, median_dace) 
         # Adding Xticks
-        plt.xlabel('Variation across different dimensions', fontweight ='bold', fontsize = 15)
+        plt.xlabel('Variation across different layers', fontweight ='bold', fontsize = 15)
         plt.ylabel('Median runtime in ms', fontweight ='bold', fontsize = 15)
         plt.xticks([r + barWidth for r in range(len(median_dace))], layer_names)
         plt.legend()
