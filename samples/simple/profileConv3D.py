@@ -1,5 +1,6 @@
 # abaranwal: Code to profile 3D convolution based on daceml functions
 
+from copy import deepcopy
 from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
@@ -20,16 +21,12 @@ parser.add_argument('--compareprof', action='store_true', help='time funcs compa
 parser.add_argument('--proftf', action='store_true', help='run tf code with markers')
 parser.add_argument('--setlaunchwait', action='store_true', help='set launch wait')
 parser.add_argument('--profoptimdace', action='store_true', help='run dace code with markers')
-parser.add_argument('--plot', action='store_true', help='create plots')
 parser.add_argument('--enableplots', action='store_true', help='disable creating plots')
+
 # Charts
-# Create an outdir with output plots
-# Get violin plots of all of the data points
-# Get a summary table comparing different versions
-# Get a summary plot comparing different versions
-# Create the output folder with current time stamp
-# Write all of the args to a file
-# Input dimension should also be in the summary table
+# TODO: Fix the bar plot to violin plot instead
+# TODO: Check if you can plot and compare different versions of optimizations
+
 args = parser.parse_args()
 
 paramscsv = args.paramscsv
@@ -74,15 +71,12 @@ outchannels = np.int32(outchannels)
 batchsize = np.int32(batchsize)
 
 sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
-sdfg_fun1: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
-baseline_dace = sdfg_fun1.compile()
+
 # Apply optimizations
 optimize_for_gpu(sdfg_fun)
 optim_dace = sdfg_fun.compile()
 
 # Function call for original dace conv3D
-def run_dace():
-    baseline_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
 
 # Function call for tensorflow 3D conv
 def run_tf():
@@ -134,6 +128,7 @@ for layern in range(currlayer, lastlayer):
     print(f'INFO: {layer_name}') 
     layer_names.append(layer_name)
     
+    #TODO: incorrect answer on ault 23, output is all zeroes. why?
     # Code for verification
     if verify:
         print("INFO: Running verification to compare against tensorflow output")
@@ -141,6 +136,7 @@ for layern in range(currlayer, lastlayer):
         optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
         tmp_output = d_output.cpu()
         opdace = tf.convert_to_tensor(tmp_output.detach().numpy())
+
         diff = np.linalg.norm(opdace - refop) / (batchsize * outchannels * indepth * inheight * inwidth )
         print('Difference between tensorflow and dace values:', diff)
         if(diff<=1e-4):
@@ -152,10 +148,6 @@ for layern in range(currlayer, lastlayer):
     if runtf:
         run_fun(run_tf)
     
-    # Profiling baseline dace using run
-    if rundace:
-        run_fun(run_dace)
-
     # Profiling optimized dace using run
     if runoptimdace:
         run_fun(run_optim_dace)
@@ -170,32 +162,14 @@ for layern in range(currlayer, lastlayer):
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
         print_time_statistics(times, [ "dace", "tf"])
-        median_dace.append(statistics.median(times[0]))
-        median_tf.append(statistics.median(times[1]))
         layersummary['layer_name'] = layer_name
+        layersummary['times'] = times
         layersummary['dace_median'] = statistics.median(times[0])
         layersummary['tf_median'] = statistics.median(times[1])
-        if enableplots:
-            d = {'tensorflow': pd.Series(times[1]), 'dace': pd.Series(times[0])}
-            df = pd.DataFrame(d)
+        median_dace.append(statistics.median(times[0]))
+        median_tf.append(statistics.median(times[1]))
 
-            fig = plt.figure(figsize=(6, 6))
-            gs = fig.add_gridspec(1, 2)
-            ax = fig.add_subplot(gs[0, 0])
-            sns.violinplot(y=df["tensorflow"], cut=0)
-            ax.set(xlabel='tensorflow', ylabel='runtime in ms')
-
-            ax = fig.add_subplot(gs[0, 1])
-            sns.violinplot(y=df["dace"], cut=0)
-            ax.set(xlabel='dace', ylabel='runtime in ms')
-
-            fig.tight_layout()
-            fig = ax.get_figure()
-
-            figurename = f'{outdir}/allviolin_{layer_name}.png'
-            fig.savefig(figurename)
-            
-            summary.append(layersummary)
+        summary.append(layersummary)
 
     # run using prof for tf
     if proftf:
@@ -205,9 +179,6 @@ for layern in range(currlayer, lastlayer):
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
         print_time_statistics(times, [ "tf"])
-        median_tf.append(statistics.median(times[1]))
-        # TODO: All individual violin plots for each layer
-        # TODO: Fix the violin plot if its showing negative axis as well 
 
     # run using prof for dace
     if profoptimdace:
@@ -217,9 +188,6 @@ for layern in range(currlayer, lastlayer):
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
         print_time_statistics(times, [ "optimdace"])
-        median_dace.append(statistics.median(times[0]))
-        # TODO: All individual violin plots for each layer
-        # TODO: Fix the violin plot if its showing negative axis as well
 
 #TODO: create summary csv with all values mean median mode
 def addlabels(x,y):
@@ -227,14 +195,45 @@ def addlabels(x,y):
         y[i] =round(y[i],2)
         plt.text(i,y[i],y[i])
 
+csv_data = deepcopy(summary)
 csv_file = f'{outdir}/summary.csv'
 with open(csv_file, 'w') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
     writer.writeheader()
-    for data in summary:
+    for data in csv_data:
+        del data['times']
         writer.writerow(data)
 
-if enableplots: 
+nrow = 2
+ncol = lastlayer-currlayer
+row = 0
+col = 0
+fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True)
+if enableplots:
+    layern = 0
+    for layersummary in summary:
+        times = layersummary["times"]
+        layer_name = layersummary["layer_name"]
+        d = {'tensorflow': pd.Series(times[1]), 'dace': pd.Series(times[0])}
+        df = pd.DataFrame(d)
+        if (col==ncol):
+            row = row+1
+            col = 0
+        if (row==nrow):
+            print("WARNING: Some plots could not be generated")
+            exit()
+        axtf = sns.violinplot(ax = axes[row,col], y=df["tensorflow"], cut=0, color = 'skyblue')
+        axtf.set(xlabel='tensorflow', ylabel='runtime in ms')
+        axtf.set_title(f'{paramscsv}layer{layern}')
+        axd = sns.violinplot(ax = axes[row+1,col], y=df["dace"], cut=0, color = 'green')
+        axd.set(xlabel='dace', ylabel='runtime in ms')
+        axd.set_title(f'{paramscsv}layer{layern}')
+        layern = layern+1
+        col = col+1
+
+    figurename = f'{outdir}/violin_runtime.png'
+    fig.savefig(figurename)
+
     if len(median_dace) != 0 and len(median_tf) !=0:
         print("INFO: Plotting summary graph")
         # set width of bar
@@ -251,14 +250,10 @@ if enableplots:
         addlabels(br2, median_dace) 
         # Adding Xticks
         plt.xlabel('Variation across different dimensions', fontweight ='bold', fontsize = 15)
-        plt.ylabel('Log of median runtime in ms', fontweight ='bold', fontsize = 15)
+        plt.ylabel('Median runtime in ms', fontweight ='bold', fontsize = 15)
         plt.xticks([r + barWidth for r in range(len(median_dace))], layer_names)
-        
         plt.legend()
-        plt.yscale('log')
         plt.xticks(rotation=45, ha='right')
-        #for index, value in enumerate(median_tf):
-        #    plt.text(value, index, str(value))
         plt.savefig(f'{outdir}/median_runtime', bbox_inches='tight')
 
     elif len(median_dace)!=0 or len(median_tf)!=0:

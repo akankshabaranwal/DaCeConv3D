@@ -63,7 +63,6 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
     sdfg.apply_transformations(MapReduceFusion)
-
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
     return
