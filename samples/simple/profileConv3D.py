@@ -14,8 +14,6 @@ import csv
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-paramscsv','--paramscsv', type=str, default='cosmoflow', help='select which csv to profile')
-parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
-parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
 parser.add_argument('--verify', action='store_true', help='run verification')
 parser.add_argument('--compareprof', action='store_true', help='time funcs comparative summary time')
 parser.add_argument('--proftf', action='store_true', help='run tf code with markers')
@@ -23,10 +21,15 @@ parser.add_argument('--setlaunchwait', action='store_true', help='set launch wai
 parser.add_argument('--profoptimdace', action='store_true', help='run dace code with markers')
 parser.add_argument('--enableplots', action='store_true', help='disable creating plots')
 
+parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
+parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
+
 # Charts
 # TODO: Fix the bar plot to violin plot instead
 # TODO: Check if you can plot and compare different versions of optimizations
 
+# FIXME: Something is wrong with subplot when the csv file has just one row  
+# FIXME: verif fails on ault23 
 args = parser.parse_args()
 
 paramscsv = args.paramscsv
@@ -45,9 +48,11 @@ totaliter = args.totaliter
 currlayer = 0
 enableplots = args.enableplots
 lastlayer = convparams.shape[0]
+#lastlayer = currlayer + 1
 
-outdir = f'./outputplots/out{math.floor(time.time())}'
-os.mkdir(outdir)
+#outdir = f'./outputplots/out{math.floor(time.time())}'
+outdir = f'./outputplots/_out'
+#os.mkdir(outdir)
 with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'csv: {csv}\n')
     f.writelines(f'warmup iteration: {warmupiter}\n')
@@ -155,6 +160,8 @@ for layern in range(currlayer, lastlayer):
     # Comparitive profiling using time funcs
     print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
     print(f"INFO: Statistics for layer number {layern}")
+    dace_median = []
+    tf_median = []
     if compareprof:
         times = time_funcs([run_optim_dace, run_tf],
                         func_names=["dace", "tf"],
@@ -168,8 +175,12 @@ for layern in range(currlayer, lastlayer):
         layersummary['tf_median'] = statistics.median(times[1])
         median_dace.append(statistics.median(times[0]))
         median_tf.append(statistics.median(times[1]))
-
+        dace_median.append(times[0])
+        tf_median.append(times[1])
         summary.append(layersummary)
+
+    dace_median_array = np.array(dace_median)
+    tf_median_array = np.array(tf_median)
 
     # run using prof for tf
     if proftf:
@@ -204,7 +215,7 @@ with open(csv_file, 'w') as csvfile:
         del data['times']
         writer.writerow(data)
 
-nrow = 1
+nrow = 2
 ncol = lastlayer-currlayer
 row = 0
 col = 0
@@ -222,11 +233,11 @@ if enableplots:
         if (row==nrow):
             print("WARNING: Some plots could not be generated")
             exit()
-        axtf = sns.violinplot(ax = axes[col], y=df["tensorflow"], cut=0, color = 'skyblue')
-        #axtf.set(xlabel=f'{paramscsv}layer{layern}', ylabel='runtime in ms')
+        axtf = sns.violinplot(ax = axes[0, col], y=df["tensorflow"], cut=0, color = 'skyblue')
+        axtf.set(xlabel=f'{paramscsv}layer{layern}', ylabel='tensorflow runtime in ms')
         #axtf.set_title(f'{paramscsv}layer{layern}')
-        axd = sns.violinplot(ax = axes[col], y=df["dace"], cut=0, color = 'pink')
-        axd.set( ylabel=f'runtime for {paramscsv}layer{layern}')
+        axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'pink')
+        axd.set( ylabel=f'dace runtime in ms', xlabel=  f'{paramscsv}layer{layern}')
         #axd.set_title(f'{paramscsv}layer{layern}')
         layern = layern+1
         col = col+1
@@ -247,7 +258,7 @@ if enableplots:
         plt.bar(br1, median_tf, color ='skyblue', width = barWidth, edgecolor ='grey', label ='tensorflow')
         plt.bar(br2, median_dace, color ='pink', width = barWidth, edgecolor ='grey', label ='dace')
         addlabels(br1, median_tf)
-        addlabels(br2, median_dace) 
+        addlabels(br2, median_dace)
         # Adding Xticks
         plt.xlabel('Variation across different layers', fontweight ='bold', fontsize = 15)
         plt.ylabel('Median runtime in ms', fontweight ='bold', fontsize = 15)

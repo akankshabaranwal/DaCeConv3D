@@ -66,64 +66,64 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
     return
-    # Expand the maps
-    m_expandparams = find_map_by_param(sdfg, 'd')
-    MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
+    # # Expand the maps
+    # m_expandparams = find_map_by_param(sdfg, 'd')
+    # MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
     
-    # Collapse the maps grouped appropriately
-    m_d = find_map_by_param(sdfg, 'd')
-    m_h = find_map_by_param(sdfg, 'h')
-    MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_h)
-    m_d = find_map_by_param(sdfg, 'd')
-    m_w = find_map_by_param(sdfg, 'w')
-    MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_w)
-    m_n = find_map_by_param(sdfg, 'n')
-    m_d = find_map_by_param(sdfg, 'd')
-    m_d.map.schedule = dace.ScheduleType.GPU_Device
-    MapCollapse.apply_to(sdfg, outer_map_entry=m_n, inner_map_entry=m_d)
-    m_oc = find_map_by_param(sdfg, 'oc')
-    m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    # # Collapse the maps grouped appropriately
+    # m_d = find_map_by_param(sdfg, 'd')
+    # m_h = find_map_by_param(sdfg, 'h')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_h)
+    # m_d = find_map_by_param(sdfg, 'd')
+    # m_w = find_map_by_param(sdfg, 'w')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_w)
+    # m_n = find_map_by_param(sdfg, 'n')
+    # m_d = find_map_by_param(sdfg, 'd')
+    # m_d.map.schedule = dace.ScheduleType.GPU_Device
+    # MapCollapse.apply_to(sdfg, outer_map_entry=m_n, inner_map_entry=m_d)
+    # m_oc = find_map_by_param(sdfg, 'oc')
+    # m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
     
-    return 
+    #return 
     #MapInterchange.apply_to(sdfg, outer_map_entry = m_n, inner_map_entry = m_d)
     #return
-    #m_n = find_map_by_param(sdfg, 'n')
-    #m_d = find_map_by_param(sdfg, 'd')
-    #MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_n)
+    # m_n = find_map_by_param(sdfg, 'n')
+    # m_d = find_map_by_param(sdfg, 'd')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_n)
     
-    #m_d = find_map_by_param(sdfg, 'd')
-    #m_d.map.schedule = dace.ScheduleType.GPU_Device
+    # m_d = find_map_by_param(sdfg, 'd')
+    # m_d.map.schedule = dace.ScheduleType.GPU_Device
 
-    # return    
-    # Create naive tiling strategy inspired from matmul
-    #entry = find_map_by_param(sdfg, 'd')
-    #xfutil.tile(sdfg, entry, True, True, d=32, h=32, w=32)
-    #xfutil.tile(sdfg, entry, True, True, d=4, h=4, w=4)
-    #gtile_d = find_map_by_param(sdfg, 'tile_d')
-    #gtile_h = find_map_by_param(sdfg, 'tile_h')
-    #MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_h, permissive=True)
-    #
-    #gtile_d = find_map_by_param(sdfg, 'tile_d')
-    #gtile_w = find_map_by_param(sdfg, 'tile_w')
-    #MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_w, permissive=True)
-    #
-    #gtile_d = find_map_by_param(sdfg, 'tile_d')
-    #gtile_d.map.schedule = dace.ScheduleType.GPU_Device
-    #btile_d = find_map_by_param(sdfg, 'tile1_d')
-    #btile_h = find_map_by_param(sdfg, 'tile1_h')
-    #MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_h, permissive=True)
-    #
-    #btile_d = find_map_by_param(sdfg, 'tile1_d')
-    #btile_w = find_map_by_param(sdfg, 'tile1_w')
-    #MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_w, permissive=True)    
-    #btile = find_map_by_param(sdfg, 'tile1_d')
-    #btile.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    #return    
+    # #Create naive tiling strategy inspired from matmul
+    # entry = find_map_by_param(sdfg, 'd')
+    # xfutil.tile(sdfg, entry, True, True, d=32, h=32, w=32)
+    # xfutil.tile(sdfg, entry, True, True, d=4, h=4, w=4)
+    # gtile_d = find_map_by_param(sdfg, 'tile_d')
+    # gtile_h = find_map_by_param(sdfg, 'tile_h')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_h, permissive=True)
+    
+    # gtile_d = find_map_by_param(sdfg, 'tile_d')
+    # gtile_w = find_map_by_param(sdfg, 'tile_w')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_w, permissive=True)
+    
+    # gtile_d = find_map_by_param(sdfg, 'tile_d')
+    # gtile_d.map.schedule = dace.ScheduleType.GPU_Device
+    # btile_d = find_map_by_param(sdfg, 'tile1_d')
+    # btile_h = find_map_by_param(sdfg, 'tile1_h')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_h, permissive=True)
+    
+    # btile_d = find_map_by_param(sdfg, 'tile1_d')
+    # btile_w = find_map_by_param(sdfg, 'tile1_w')
+    # MapCollapse.apply_to(sdfg, outer_map_entry=btile_d, inner_map_entry=btile_w, permissive=True)    
+    # btile = find_map_by_param(sdfg, 'tile1_d')
+    # btile.map.schedule = dace.ScheduleType.GPU_ThreadBlock
 
-    ## Schedule the collapsed maps on the GPU
-    #m_h = find_map_by_param(sdfg, 'h')
-    #m_oc = find_map_by_param(sdfg, 'oc')
-    #m_h.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-    #m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    # # Schedule the collapsed maps on the GPU
+    # m_h = find_map_by_param(sdfg, 'h')
+    # m_oc = find_map_by_param(sdfg, 'oc')
+    # m_h.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    # m_oc.map.schedule = dace.ScheduleType.GPU_ThreadBlock
 
     #return
     ## Add local storage (shared memory) for input on GPU
