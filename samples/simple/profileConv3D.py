@@ -47,14 +47,14 @@ warmupiter = args.warmupiter
 totaliter = args.totaliter
 currlayer = 0
 enableplots = args.enableplots
-lastlayer = convparams.shape[0]
-#lastlayer = currlayer + 1
+#lastlayer = convparams.shape[0]
+lastlayer = currlayer + 1
 
 #outdir = f'./outputplots/out{math.floor(time.time())}'
 outdir = f'./outputplots/_out'
 #os.mkdir(outdir)
 with open(f'./{outdir}/params.txt', 'w') as f:
-    f.writelines(f'csv: {csv}\n')
+    f.writelines(f'csv: {paramscsv}\n')
     f.writelines(f'warmup iteration: {warmupiter}\n')
     f.writelines(f'total iteration: {totaliter}\n')
     f.writelines(f'set launch wait: {setlaunchwait}\n')
@@ -141,7 +141,7 @@ for layern in range(currlayer, lastlayer):
         optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
         tmp_output = d_output.cpu()
         opdace = tf.convert_to_tensor(tmp_output.detach().numpy())
-
+        print("Dace output:", opdace)
         diff = np.linalg.norm(opdace - refop) / (batchsize * outchannels * indepth * inheight * inwidth )
         print('Difference between tensorflow and dace values:', diff)
         if(diff<=1e-4):
