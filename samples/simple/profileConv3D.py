@@ -23,6 +23,7 @@ parser.add_argument('--enableplots', action='store_true', help='disable creating
 
 parser.add_argument('-warmupiter','--warmupiter', type=int, default=10, help='set number of warmup iterations')
 parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set number of total iterations')
+parser.add_argument('-lastlayer','--lastlayer', type=int, default=1, help='set number of total iterations')
 
 # Charts
 # TODO: Fix the bar plot to violin plot instead
@@ -48,7 +49,7 @@ totaliter = args.totaliter
 currlayer = 0
 enableplots = args.enableplots
 #lastlayer = convparams.shape[0]
-lastlayer = currlayer + 1
+lastlayer = args.lastlayer
 
 #outdir = f'./outputplots/out{math.floor(time.time())}'
 outdir = f'./outputplots/_out'
@@ -220,6 +221,7 @@ ncol = lastlayer-currlayer
 row = 0
 col = 0
 fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True, sharex=True)
+full_df = pd.DataFrame(columns = ['layer_name','fun_name','times'])
 if enableplots:
     layern = 0
     for layersummary in summary:
@@ -233,18 +235,42 @@ if enableplots:
         if (row==nrow):
             print("WARNING: Some plots could not be generated")
             exit()
-        axtf = sns.violinplot(ax = axes[0, col], y=df["tensorflow"], cut=0, color = 'skyblue')
+        axtf = sns.violinplot(ax = axes[0, col], y=df["tensorflow"], cut=0, color = 'pink')
         axtf.set(xlabel=f'{paramscsv}layer{layern}', ylabel='tensorflow runtime in ms')
-        #axtf.set_title(f'{paramscsv}layer{layern}')
-        axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'pink')
+        axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'skyblue')
         axd.set( ylabel=f'dace runtime in ms', xlabel=  f'{paramscsv}layer{layern}')
-        #axd.set_title(f'{paramscsv}layer{layern}')
         layern = layern+1
         col = col+1
 
-    figurename = f'{outdir}/violin_runtime.png'
-    fig.savefig(figurename)
+        layer_name_column = [f'layer{layern}']*totaliter
+        fun_name_column = ['dace']*totaliter
+        data_dace = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[0]}
+        df_dace = pd.DataFrame(data_dace)
+        layer_name_column = [f'layer{layern}']*totaliter
+        fun_name_column = ['tensorflow']*totaliter
+        data_tf = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[1]}
+        df_tf = pd.DataFrame(data_tf)
+        
+        full_df = pd.concat([full_df, df_tf, df_dace], ignore_index=True)
 
+
+    figurename = f'{outdir}/separate_runtime.png'
+    fig.savefig(figurename)
+    plt.cla()
+    plt.clf()
+
+    #sns.set(style="darkgrid")
+    full_df[["times"]] = full_df[["times"]].apply(pd.to_numeric)
+    # Grouped violinplot
+    ax = sns.violinplot(x="layer_name", y="times", hue="fun_name", data=full_df, palette="Pastel1", cut=0, scale='width', inner='quartile',split=True)
+    ax.set(ylabel='Runtime in ms')
+    ax.set(xlabel=f'Variation across {paramscsv} layers for warmup iterations {warmupiter} and total iterations {totaliter}')
+    fig = ax.get_figure()
+    figurename = f'{outdir}/violin_allruntime.png'
+    plt.savefig(figurename)
+    
+    plt.cla()
+    plt.clf()
     if len(median_dace) != 0 and len(median_tf) !=0:
         print("INFO: Plotting summary graph")
         # set width of bar
@@ -255,8 +281,8 @@ if enableplots:
         br2 = [x + barWidth for x in br1]
         
         # Make the plot
-        plt.bar(br1, median_tf, color ='skyblue', width = barWidth, edgecolor ='grey', label ='tensorflow')
-        plt.bar(br2, median_dace, color ='pink', width = barWidth, edgecolor ='grey', label ='dace')
+        plt.bar(br1, median_tf, color ='pink', width = barWidth, edgecolor ='grey', label ='tensorflow')
+        plt.bar(br2, median_dace, color ='skyblue', width = barWidth, edgecolor ='grey', label ='dace')
         addlabels(br1, median_tf)
         addlabels(br2, median_dace)
         # Adding Xticks
