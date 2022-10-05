@@ -77,7 +77,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     sdfg.simplify()
     sdfg.apply_gpu_transformations()
     
-    return
+    #return
     # Expand the maps
     m_expandparams = find_map_by_param(sdfg, 'd')
     MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
@@ -97,32 +97,16 @@ def optimize_for_gpu(sdfg: dace.SDFG):
        if(nameconv):
         mapname = f'{nameconv.group(1)}_d'
         break
-       
-    # The multiplication map is called "_Mult__map" (see above graph), we can query it
     
-    #sdfg = auto_optimize.auto_optimize(sdfg, device=dtypes.DeviceType.GPU)
+    # Tiling
     state = sdfg.node(0)
-    
     conv_exit = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapExit) and n.label == mapname)
     conv_entry = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapEntry) and n.label == mapname)
-    #print('Exit: ', conv_exit)
-    print('Entry: ', conv_entry)
-    print(vars(conv_entry))
-    print('Exit: ', conv_exit)
-    #me, state = find_map_by_name(sdfg, mapname)
-    #conv_entry = find_mapentry_by_param(sdfg, 'd')
-    #conv_exit = find_mapexit_by_param(sdfg, 'd')
-    #print('Entry: ', conv_entry)
-    #print('Exit: ', conv_exit)
-    
     MapTiling.apply_to(sdfg, map_entry = conv_entry, map_exit = conv_exit)
     m_d = find_map_by_param(sdfg, 'd')
     m_d.map.schedule = dace.ScheduleType.GPU_ThreadBlock
     m_tiled = find_map_by_param(sdfg, 'tile_d')
     m_tiled.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-     
-    #print(sdfg)
-    #exit()
 
     return
 
