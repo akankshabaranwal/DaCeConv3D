@@ -20,7 +20,8 @@ import torch.cuda.profiler as profiler
 from typing import Tuple
 import torch
 
-from dace.transformation.dataflow import MapTiling, MapExpansion, MapCollapse, MapCollapse, MapExpansion
+from dace.transformation.dataflow import MapTiling, MapExpansion, MapCollapse, MapCollapse, MapExpansion, MapInterchange
+from dace.transformation import helpers as xfutil
 from dace.transformation.optimizer import Optimizer
 from dace.transformation.auto import auto_optimize
 from dace import dtypes
@@ -28,6 +29,8 @@ from dace import dtypes
 # Define constants for filter dimensions
 global kdim
 kdim = 3
+
+#TODO: Recheck the cosmoflow parameters
 
 #####################################################################
 # Data-centric optimization helpers copied from matmul.py 
@@ -67,6 +70,7 @@ def find_map_by_name(sdfg: dace.SDFG, name: str) -> dace.nodes.MapEntry:
     return next((n, s) for n, s in sdfg.all_nodes_recursive()
         if isinstance(n, dace.nodes.MapEntry) and n.label == name)
 import re
+
 # Optimize code on the GPU
 def optimize_for_gpu(sdfg: dace.SDFG):
     """ Optimize 3D convolution example for GPUs. """
@@ -77,7 +81,6 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     sdfg.simplify()
     sdfg.apply_gpu_transformations()
     
-    #return
     # Expand the maps
     m_expandparams = find_map_by_param(sdfg, 'd')
     MapExpansion.apply_to(sdfg, map_entry=m_expandparams)
@@ -88,33 +91,61 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     m_d = find_map_by_param(sdfg, 'd')
     m_w = find_map_by_param(sdfg, 'w')
     MapCollapse.apply_to(sdfg, outer_map_entry=m_d, inner_map_entry=m_w)
-    m_w = find_map_by_param(sdfg, 'w')
-    mapname = 'conv3D_dace_conv3d_130_d'
-    for xform in Optimizer(sdfg).get_pattern_matches(patterns=[MapTiling]):
-       print('Match:', xform.print_match(sdfg))
-       matches = xform.print_match(sdfg)
-       nameconv = re.match(r'MapTiling in \[MapEntry \((.*)_d\[d=0:d_indepth - 2, h=0:d_inheight - 2, w=0:d_inwidth - 2\].*', matches, flags=0)
-       if(nameconv):
-        mapname = f'{nameconv.group(1)}_d'
-        break
-    
-    # Tiling
-    state = sdfg.node(0)
-    conv_exit = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapExit) and n.label == mapname)
-    conv_entry = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapEntry) and n.label == mapname)
-    MapTiling.apply_to(sdfg, map_entry = conv_entry, map_exit = conv_exit)
     m_d = find_map_by_param(sdfg, 'd')
-    m_d.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-    m_tiled = find_map_by_param(sdfg, 'tile_d')
-    m_tiled.map.schedule = dace.ScheduleType.GPU_ThreadBlock
-
+    m_d.map.schedule=dace.ScheduleType.GPU_Device
+    m_n = find_map_by_param(sdfg, 'n')
+    m_n.map.schedule=dace.ScheduleType.Sequential
+    MapInterchange.apply_to(sdfg, outer_map_entry=m_n, inner_map_entry=m_d)
+    m_n = find_map_by_param(sdfg, 'n')
+    m_oc = find_map_by_param(sdfg, 'oc')
+    MapCollapse.apply_to(sdfg, outer_map_entry=m_n, inner_map_entry=m_oc)    
+    
+    return
+    
+    # Apply tiling for the topmost map
+    entry = find_map_by_param(sdfg, 'd')
+    divides_evenly = True # TODO: Parameterize this
+    xfutil.tile(sdfg, entry, divides_evenly, True, d=4, h=4, w=4)
+    gtile_d = find_map_by_param(sdfg, 'tile_d')
+    gtile_h = find_map_by_param(sdfg, 'tile_h')
+    gtile_d.map.schedule = dace.ScheduleType.Sequential
+    MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_h)
+    gtile_d = find_map_by_param(sdfg, 'tile_d')
+    gtile_w = find_map_by_param(sdfg, 'tile_w')
+    MapCollapse.apply_to(sdfg, outer_map_entry=gtile_d, inner_map_entry=gtile_w)
+    gtile_d = find_map_by_param(sdfg, 'tile_d')
+    gtile_d.map.schedule = dace.ScheduleType.GPU_Device
+    m_n = find_map_by_param(sdfg, 'n')
+    m_n.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    
+    # mapname = 'conv3D_dace_conv3d_130_d'
+    # for xform in Optimizer(sdfg).get_pattern_matches(patterns=[MapTiling]):
+    #    print('Match:', xform.print_match(sdfg))
+    #    matches = xform.print_match(sdfg)
+    #    nameconv = re.match(r'MapTiling in \[MapEntry \((.*)_d\[d=0:d_indepth - 2, h=0:d_inheight - 2, w=0:d_inwidth - 2\].*', matches, flags=0)
+    #    if(nameconv):
+    #     mapname = f'{nameconv.group(1)}_d'
+    #     break
+    
+    
+    # state = sdfg.node(0)
+    # conv_exit = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapExit) and n.label == mapname)
+    # conv_entry = next(n for n in state.nodes() if isinstance(n, dace.nodes.MapEntry) and n.label == mapname)
+    # MapTiling.apply_to(sdfg, map_entry = conv_entry, map_exit = conv_exit)
+    # m_d = find_map_by_param(sdfg, 'd')
+    # m_d.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    # m_tiled = find_map_by_param(sdfg, 'tile_d')
+    # m_tiled.map.schedule = dace.ScheduleType.GPU_Device
+    # m_n = find_map_by_param(sdfg, 'n')
+    # m_n.map.schedule = dace.ScheduleType.GPU_ThreadBlock
+    
     return
 
     
 
 # Simple parallel 3D convolution
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
-def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_inchannels] @dace.StorageType.GPU_Global,
+def dace_conv3d( Input: dtype[d_batchsize, d_indepth, d_inheight, d_inwidth, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[kdim, kdim, kdim, d_inchannels, d_outchannels] @dace.StorageType.GPU_Global,
                 Output: dtype[d_batchsize, d_indepth-kdim+1, d_inheight-kdim+1, d_inwidth-kdim+1, d_outchannels] @dace.StorageType.GPU_Global):
     for n, d, h, w, oc in dace.map[0:d_batchsize, 0:d_indepth-kdim+1, 0:d_inheight-kdim+1, 0:d_inwidth-kdim+1, 0:d_outchannels]:
@@ -160,8 +191,8 @@ def prepareinputs(currconv):
     outchannels = currconv["OutputChannel"]
     outdepth = indepth-kdim+1
     outheight = inheight-kdim+1
-    outwidth = inheight-kdim+1
-    batchsize = 1
+    outwidth = inheight-kdim+1 
+    batchsize = 4
     # Prepare data with numpy
     Input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
     kernel = torch.rand(kdim, kdim, kdim, inchannels, outchannels).cuda()

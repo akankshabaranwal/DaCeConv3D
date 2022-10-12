@@ -142,7 +142,6 @@ for layern in range(currlayer, lastlayer):
         optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, d_outchannels=outchannels, d_batchsize=batchsize)
         tmp_output = d_output.cpu()
         opdace = tf.convert_to_tensor(tmp_output.detach().numpy())
-        print("Dace output:", opdace)
         diff = np.linalg.norm(opdace - refop) / (batchsize * outchannels * indepth * inheight * inwidth )
         print('Difference between tensorflow and dace values:', diff)
         if(diff<=1e-4):
