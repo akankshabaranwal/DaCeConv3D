@@ -34,7 +34,7 @@ plt.ylim(100,1e5*0.3)
 dace_AI = 7.74E+02
 dace_Perf = 1.72E+03
 plt.loglog(dace_AI, dace_Perf,'.r')
-plt.text(dace_AI, dace_Perf*1.2, 'dace_dram')
+plt.text(dace_AI, dace_Perf*0.8, 'dace_dram')
 
 dace_AI = 1.49E+02
 dace_Perf = 1.72E+03
@@ -45,7 +45,7 @@ plt.text(dace_AI*0.5, dace_Perf*1.2, 'dace_l2')
 tf_AI = 1.90E+03
 tf_Perf = 6.63E+03
 plt.loglog(tf_AI, tf_Perf,'.g')
-plt.text(tf_AI, tf_Perf*1.2, 'tf_dram')
+plt.text(tf_AI, tf_Perf*0.8, 'tf_dram')
 
 tf_AI = 4.66E+02
 tf_Perf = 6.63E+03
