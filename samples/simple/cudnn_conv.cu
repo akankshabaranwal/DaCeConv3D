@@ -55,14 +55,15 @@ int main()
         std::cout << "in_n: " << in_n << ", in_c: " << in_c << ", in_d: " << in_d << ", in_h: " << in_h << ", in_w: " << in_w << std::endl;
         cudnnTensorDescriptor_t in_desc;
         CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc));        
-        vector<int> dims = {in_n, in_c, in_d, in_h, in_w};
-        vector<int> strides = {in_c*in_d*in_h*in_w, in_d*in_h*in_w, in_h*in_w, in_w, 1};
-        CUDNN_CALL(cudnnSetTensorNdDescriptor(in_desc, 
-                                            CUDNN_DATA_FLOAT, 
-                                            5, 
-                                            dims.data(), 
-                                            strides.data())
-                                            );
+        int dims[5];
+        dims[0]=in_n; dims[1]=in_c; dims[2]=in_d;dims[3]=in_h;dims[4]=in_w;
+        int strides[5];
+        strides[0]=in_c*in_d*in_h*in_w; strides[1] =in_d*in_h*in_w; strides[2]= in_h*in_w; strides[3]= in_w; strides[4] =1;
+        CUDNN_CALL(cudnnSetTensorNdDescriptor(in_desc,
+                                        CUDNN_DATA_FLOAT,
+                                        5,
+                                        dims,
+                                        strides));
         float *in_data;
         CUDA_CALL(cudaMalloc( &in_data, in_n * in_c * in_d * in_h * in_w * sizeof(float)));
 
@@ -72,11 +73,7 @@ int main()
         cudnnFilterDescriptor_t filt_desc;
         CUDNN_CALL(cudnnCreateFilterDescriptor(&filt_desc));
         vector<int> filtdims = {filt_k, in_c, in_d, in_h, in_w};
-        CUDNN_CALL(cudnnSetFilterNdDescriptor(filt_desc, 
-                                            CUDNN_DATA_FLOAT, 
-                                            CUDNN_TENSOR_NCHW, 
-                                            5, 
-                                            filtdims.data()));
+        CUDNN_CALL(cudnnSetFilterNdDescriptor(filt_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, filtdims.data()));
         float *filt_data;
         CUDA_CALL(cudaMalloc(&filt_data, filt_k * filt_c * filt_d * filt_h * filt_w * sizeof(float)));
 
@@ -88,14 +85,7 @@ int main()
         vector<int> convpad = {pad_d, pad_h, pad_w};
         vector<int> filtstr = {str_d, str_h, str_w};
         vector<int> convdil = {dil_d, dil_h, dil_w};
-        CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_desc, 
-                                                  3, 
-                                                  convpad.data(), 
-                                                  filtstr.data(), 
-                                                  convdil.data(), 
-                                                  CUDNN_CROSS_CORRELATION, 
-                                                  CUDNN_DATA_FLOAT)
-                                                  );
+        CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_desc, 3, convpad.data(), filtstr.data(), convdil.data(), CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
 
         // output
         int outdims[5];
@@ -110,12 +100,7 @@ int main()
         std::cout << "out_n: " << out_n << ", out_c: " << out_c << ", out_d: "<< out_d<< ", out_h: " << out_h << ", out_w: " << out_w << std::endl;
         vector<int> outstrides = {out_c*out_d*out_h*out_w, out_d*out_h*out_w, out_h*out_w, out_w, 1};
         
-        CUDNN_CALL(cudnnSetTensorNdDescriptor(out_desc, 
-                                            CUDNN_DATA_FLOAT, 
-                                            5, 
-                                            outdims, 
-                                            outstrides.data())
-                                            );
+        CUDNN_CALL(cudnnSetTensorNdDescriptor(out_desc, CUDNN_DATA_FLOAT, 5, outdims, outstrides.data()));
         float *out_data;
         CUDA_CALL(cudaMalloc(&out_data, out_n * out_c * out_d * out_h * out_w * sizeof(float)));
 
@@ -125,8 +110,7 @@ int main()
         cudnnConvolutionFwdAlgoPerf_t perfResults;
         int requestedAlgoCount = 1;
         int returnedAlgoCount = 1;
-        CUDNN_CALL(cudnnFindConvolutionForwardAlgorithmEx(cudnn, in_desc, in_data, filt_desc, filt_data, conv_desc, 
-                                                        out_desc, out_data, requestedAlgoCount, &returnedAlgoCount, &perfResults, search_ws, 33554432));
+        CUDNN_CALL(cudnnFindConvolutionForwardAlgorithmEx(cudnn, in_desc, in_data, filt_desc, filt_data, conv_desc, out_desc, out_data, requestedAlgoCount, &returnedAlgoCount, &perfResults, search_ws, 33554432));
       // Till here the code works.
         assert(in_desc!=nullptr);
         assert(filt_desc!=nullptr);
