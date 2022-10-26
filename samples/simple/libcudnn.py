@@ -2,7 +2,9 @@ import sys
 import ctypes
 
 # Most functions taken from: https://github.com/hannes-brt/cudnn-python-wrappers/blob/master/libcudnn.py
+# https://github.com/hannes-brt/cudnn-python-wrappers/
 # Not all functions from the original source code have been implemented.
+# TODO: Fix the data types of alpha beta, hardcoded it to float for now. 
 
 _libcudnn_libname_list = ['libcudnn.so', 'libcudnn.so.8', 'libcudnn.so.8.4.1']
 _libcudnn = None
@@ -208,4 +210,237 @@ def cudnnSetTensorNdDescriptor(tensorDesc, dataType, tensor_dim, dims, strides):
                                                 tensor_dim, 
                                                 dims_arr,
                                                 strides_arr)                             
+    cudnnCheckStatus(status)
+
+_libcudnn.cudnnCreateFilterDescriptor.restype = int
+_libcudnn.cudnnCreateFilterDescriptor.argtypes = [ctypes.c_void_p]
+def cudnnCreateFilterDescriptor():
+    """"
+    Create a filter descriptor.
+    This function creates a filter descriptor object by allocating the memory needed
+    to hold its opaque structure.
+    Parameters
+    ----------
+    Returns
+    -------
+    wDesc : cudnnFilterDescriptor
+        Handle to a newly allocated filter descriptor.
+    """
+
+    wDesc = ctypes.c_void_p()
+    status = _libcudnn.cudnnCreateFilterDescriptor(ctypes.byref(wDesc))
+    cudnnCheckStatus(status)
+
+    return wDesc.value
+
+
+_libcudnn.cudnnSetFilterNdDescriptor.restype = int
+_libcudnn.cudnnSetFilterNdDescriptor.argtypes = [ctypes.c_void_p, #desc
+                                                ctypes.c_int, #datatype
+                                                ctypes.c_int, #layout
+                                                ctypes.c_int, #tensordim
+                                                ctypes.POINTER(ctypes.c_int)] #filtdim
+def cudnnSetFilterNdDescriptor(wDesc, dataType, format, tensor_dim, filterdims):
+    filterdims_arr = (ctypes.c_int * len(filterdims))(*filterdims) # Convert list to array
+    status = _libcudnn.cudnnSetFilterNdDescriptor(wDesc, 
+                                                dataType, 
+                                                format, 
+                                                tensor_dim,
+                                                filterdims_arr)
+    cudnnCheckStatus(status)
+
+
+_libcudnn.cudnnCreateConvolutionDescriptor.restype = int
+_libcudnn.cudnnCreateConvolutionDescriptor.argtypes = [ctypes.c_void_p]
+def cudnnCreateConvolutionDescriptor():
+    """"
+    Create a convolution descriptor.
+    This function creates a convolution descriptor object by allocating the memory needed to
+    hold its opaque structure.
+    Returns
+    -------
+    convDesc : cudnnConvolutionDescriptor
+        Handle to newly allocated convolution descriptor.
+    """
+
+    convDesc = ctypes.c_void_p()
+
+    status = _libcudnn.cudnnCreateConvolutionDescriptor(ctypes.byref(convDesc))
+    cudnnCheckStatus(status)
+
+    return convDesc.value
+
+
+_libcudnn.cudnnSetConvolutionNdDescriptor.restype = int
+_libcudnn.cudnnSetConvolutionNdDescriptor.argtypes = [ctypes.c_void_p, # convDesc
+                                                      ctypes.c_int, # arrayLength
+                                                      ctypes.POINTER(ctypes.c_int), # padA[]
+                                                      ctypes.POINTER(ctypes.c_int), # filterStrideA[]
+                                                      ctypes.POINTER(ctypes.c_int), # dilationA[]
+                                                      ctypes.c_int, # mode
+                                                      ctypes.c_int] # dataType
+def cudnnSetConvolutionNdDescriptor(convDesc, dim, padA, filterStrideA, dilationA, mode, dataType):
+    padA_arr = (ctypes.c_int * len(padA))(*padA) # Convert list to array
+    filterStrideA_arr = (ctypes.c_int * len(filterStrideA))(*filterStrideA) # Convert list to array
+    dilationA_arr = (ctypes.c_int * len(dilationA))(*dilationA) # Convert list to array
+
+    status = _libcudnn.cudnnSetConvolutionNdDescriptor(convDesc,
+                                                       dim,
+                                                       padA_arr,
+                                                       filterStrideA_arr,
+                                                       dilationA_arr,
+                                                       mode,
+                                                       dataType)
+    cudnnCheckStatus(status)
+
+
+import numpy as np
+_libcudnn.cudnnGetConvolutionNdForwardOutputDim.restype = int
+_libcudnn.cudnnGetConvolutionNdForwardOutputDim.argtypes = [ctypes.c_void_p, 
+                                                            ctypes.c_void_p, 
+                                                            ctypes.c_void_p,
+                                                            ctypes.c_int,
+                                                            ctypes.POINTER(ctypes.c_int)]
+def cudnnGetConvolutionNdForwardOutputDim(convDesc, inputTensorDesc, wDesc, tensor_dim, outdims):
+    """"
+    """    
+    outdims_arr = (ctypes.c_int * len(outdims))(*outdims) # Convert list to array
+
+    status = _libcudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, 
+                                                            inputTensorDesc,
+                                                            wDesc,
+                                                            tensor_dim,
+                                                            outdims_arr)
+    outdims = np.ctypeslib.as_array(outdims_arr)
+    cudnnCheckStatus(status)
+    return outdims
+
+class cudnnConvolutionFwdAlgoPerf(ctypes.Structure):
+    _fields_ = [("algo", ctypes.c_int),
+                ("status", ctypes.c_int),
+                ("time", ctypes.c_float),
+                ("memory", ctypes.c_size_t)]
+
+    def __str__(self):
+        return '(algo=%d, status=%d, time=%f, memory=%d)' % (self.algo,
+                                                             self.status,
+                                                             self.time,
+                                                             self.memory)
+    def __repr__(self):
+        return self.__str__()
+        
+# _libcudnn.cudnnFindConvolutionForwardAlgorithmEx.restype = int
+# _libcudnn.cudnnFindConvolutionForwardAlgorithmEx.argtypes = [ctypes.c_void_p, # handle
+#                                                             ctypes.c_void_p, # indesc
+#                                                             ctypes.POINTER(ctypes.c_int), # indata
+#                                                             ctypes.c_void_p, # filtdesc
+#                                                             ctypes.POINTER(ctypes.c_int), # filtdata
+#                                                             ctypes.c_void_p, # convdesc
+#                                                             ctypes.c_void_p, # outdesc
+#                                                             ctypes.POINTER(ctypes.c_int), # outdata
+#                                                             ctypes.c_int, # requestAlgoCount
+#                                                             ctypes.c_void_p, #returnedAlgoCount
+#                                                             ctypes.c_void_p] #perfResults
+# def cudnnFindConvolutionForwardAlgorithm(handle, indesc, indata, filtdesc, filtdata, convdesc, outdesc, outdata, requestedAlgoCount, returnedAlgoCount, perfResults, search_ws):
+#     perfResultsType = cudnnConvolutionFwdAlgoPerf * requestedAlgoCount
+#     perfResults = perfResultsType()
+#     returnedAlgoCount = ctypes.c_int()
+#     status = _libcudnn.cudnnFindConvolutionForwardAlgorithm(handle,
+#                                                             indesc,
+#                                                             indata,
+#                                                             filtdesc,
+#                                                             filtdata,
+#                                                             convdesc,
+#                                                             outdesc,
+#                                                             outdata,
+#                                                             ctypes.c_int(requestedAlgoCount),
+#                                                             ctypes.byref(returnedAlgoCount),
+#                                                             ctypes.cast(perfResults, ctypes.POINTER(cudnnConvolutionFwdAlgoPerf)))
+#     cudnnCheckStatus(status)
+#     return perfResults[0:returnedAlgoCount.value]
+
+
+_libcudnn.cudnnGetConvolutionForwardWorkspaceSize.restype = int
+_libcudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = [ctypes.c_void_p,
+                                                              ctypes.c_void_p,
+                                                              ctypes.c_void_p,
+                                                              ctypes.c_void_p,
+                                                              ctypes.c_void_p,
+                                                              ctypes.c_int]
+def cudnnGetConvolutionForwardWorkspaceSize(handle, srcDesc, wDesc,
+                                            convDesc, destDesc, algo):
+    """"
+    This function returns the amount of GPU memory workspace the user needs
+    to allocate to be able to call cudnnConvolutionForward with the specified algorithm.
+    Parameters
+    ----------
+    handle : cudnnHandle
+        Handle to a previously created cuDNN context.
+    srcDesc : cudnnTensorDescriptor
+        Handle to a previously initialized tensor descriptor.
+    wDesc : cudnnFilterDescriptor
+        Handle to a previously initialized filter descriptor.
+    convDesc : cudnnConvolutionDescriptor
+        Previously initialized convolution descriptor.
+    destDesc : cudnnTensorDescriptor
+        Handle to a previously initialized tensor descriptor.
+    algo : cudnnConvolutionFwdAlgo
+        Enumerant that specifies the chosen convolution algorithm.
+    Returns
+    -------
+    sizeInBytes: c_size_t
+        Amount of GPU memory needed as workspace to be able to execute a
+        forward convolution with the sepcified algo.
+    """
+    sizeInBytes = ctypes.c_size_t()
+    conv_algo = ctypes.c_int(algo)
+
+    status = _libcudnn.cudnnGetConvolutionForwardWorkspaceSize(handle, 
+                                                            srcDesc, 
+                                                            wDesc,
+                                                            convDesc, 
+                                                            destDesc,
+                                                            conv_algo,
+                                                            ctypes.byref(sizeInBytes))
+    cudnnCheckStatus(status)
+
+    return sizeInBytes
+
+
+_libcudnn.cudnnConvolutionForward.restype = int
+_libcudnn.cudnnConvolutionForward.argtypes = [ctypes.c_void_p, 
+                                            ctypes.c_void_p, 
+                                            ctypes.c_void_p,
+                                            ctypes.c_void_p, 
+                                            ctypes.c_void_p, 
+                                            ctypes.c_void_p,
+                                            ctypes.c_void_p, 
+                                            ctypes.c_int,
+                                            ctypes.c_void_p, 
+                                            ctypes.c_size_t,
+                                            ctypes.c_void_p, 
+                                            ctypes.c_void_p,
+                                            ctypes.c_void_p]
+
+def cudnnConvolutionForward(handle, alpha, srcDesc, srcData, wDesc, w,
+                            convDesc, algo, workspace, workSpaceSizeInBytes, beta,
+                            destDesc, destData):
+    """
+    """
+    alphaRef = ctypes.byref(ctypes.c_float(alpha))
+    betaRef = ctypes.byref(ctypes.c_float(beta))
+
+    status = _libcudnn.cudnnConvolutionForward(handle, 
+                                            alphaRef, 
+                                            srcDesc, 
+                                            srcData,
+                                            wDesc, 
+                                            w,
+                                            convDesc, 
+                                            algo, 
+                                            workspace,
+                                            ctypes.c_size_t(workSpaceSizeInBytes),
+                                            betaRef, 
+                                            destDesc, 
+                                            destData)
     cudnnCheckStatus(status)

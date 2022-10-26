@@ -72,8 +72,12 @@ int main()
         std::cout << "filt_k: " << filt_k << ", filt_c: " << filt_c << ", filt_d: " << filt_d << ", filt_h: " << filt_h << ", filt_w: " << filt_w << std::endl;
         cudnnFilterDescriptor_t filt_desc;
         CUDNN_CALL(cudnnCreateFilterDescriptor(&filt_desc));
-        vector<int> filtdims = {filt_k, in_c, in_d, in_h, in_w};
-        CUDNN_CALL(cudnnSetFilterNdDescriptor(filt_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, filtdims.data()));
+        vector<int> filtdims = {filt_k, in_c, filt_d, filt_h, filt_w};
+        CUDNN_CALL(cudnnSetFilterNdDescriptor(filt_desc, 
+                                              CUDNN_DATA_FLOAT, 
+                                              CUDNN_TENSOR_NCHW, 
+                                              5, 
+                                              filtdims.data()));
         float *filt_data;
         CUDA_CALL(cudaMalloc(&filt_data, filt_k * filt_c * filt_d * filt_h * filt_w * sizeof(float)));
 
@@ -85,11 +89,21 @@ int main()
         vector<int> convpad = {pad_d, pad_h, pad_w};
         vector<int> filtstr = {str_d, str_h, str_w};
         vector<int> convdil = {dil_d, dil_h, dil_w};
-        CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_desc, 3, convpad.data(), filtstr.data(), convdil.data(), CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+        CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_desc, 
+                                                  3, 
+                                                  convpad.data(), 
+                                                  filtstr.data(), 
+                                                  convdil.data(), 
+                                                  CUDNN_CROSS_CORRELATION, 
+                                                  CUDNN_DATA_FLOAT));
 
         // output
         int outdims[5];
-        CUDNN_CALL(cudnnGetConvolutionNdForwardOutputDim( conv_desc, in_desc, filt_desc, 5, outdims));
+        CUDNN_CALL(cudnnGetConvolutionNdForwardOutputDim( conv_desc, 
+                                                        in_desc, 
+                                                        filt_desc, 
+                                                        5, 
+                                                        outdims));
         cudnnTensorDescriptor_t out_desc;        
         CUDNN_CALL(cudnnCreateTensorDescriptor(&out_desc));
         int out_n = outdims[0];
@@ -110,7 +124,19 @@ int main()
         cudnnConvolutionFwdAlgoPerf_t perfResults;
         int requestedAlgoCount = 1;
         int returnedAlgoCount = 1;
-        CUDNN_CALL(cudnnFindConvolutionForwardAlgorithmEx(cudnn, in_desc, in_data, filt_desc, filt_data, conv_desc, out_desc, out_data, requestedAlgoCount, &returnedAlgoCount, &perfResults, search_ws, 33554432));
+        CUDNN_CALL(cudnnFindConvolutionForwardAlgorithmEx(cudnn, 
+                                                        in_desc, 
+                                                        in_data, 
+                                                        filt_desc, 
+                                                        filt_data, 
+                                                        conv_desc, 
+                                                        out_desc, 
+                                                        out_data, 
+                                                        requestedAlgoCount, 
+                                                        &returnedAlgoCount, 
+                                                        &perfResults, 
+                                                        search_ws, 
+                                                        33554432));
       // Till here the code works.
         assert(in_desc!=nullptr);
         assert(filt_desc!=nullptr);
@@ -123,13 +149,31 @@ int main()
         
         std::cout<<selectedAlgo;
         size_t ws_size=33554432;
-        CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(cudnn, in_desc, filt_desc, conv_desc, out_desc, selectedAlgo, &ws_size));
+        CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(cudnn, 
+                                                          in_desc, 
+                                                          filt_desc, 
+                                                          conv_desc, 
+                                                          out_desc, 
+                                                          selectedAlgo, 
+                                                          &ws_size));
         std::cerr << "Workspace size: " << (ws_size ) << "bytes"<< std::endl;
         
         void* d_workspace{nullptr};
         cudaMalloc(&d_workspace, ws_size);
         const float alpha = 1.0f, beta = 0.0f;
-        CUDNN_CALL(cudnnConvolutionForward(cudnn, &alpha, in_desc, in_data, filt_desc, filt_data, conv_desc, selectedAlgo, d_workspace, ws_size, &beta, out_desc, out_data));
+        CUDNN_CALL(cudnnConvolutionForward(cudnn, 
+                                        &alpha, 
+                                        in_desc, 
+                                        in_data, 
+                                        filt_desc, 
+                                        filt_data, 
+                                        conv_desc, 
+                                        selectedAlgo, 
+                                        d_workspace, 
+                                        ws_size, 
+                                        &beta, 
+                                        out_desc, 
+                                        out_data));
         cudaFree(in_data);
         cudaFree(out_data);
         cudaFree(filt_data);
