@@ -80,7 +80,7 @@ print("Filter tensor created")
 pad_d = 1 
 pad_h = 1 
 pad_w = 1 
-str_d=1
+str_d = 1
 str_h = 1
 str_w = 1
 dil_d = 1
@@ -88,6 +88,7 @@ dil_h = 1
 dil_w = 1
 alpha = 1.0
 beta = 0
+
 '''
 cudnnConvolutionDescriptor_t conv_desc;
 CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
@@ -153,7 +154,7 @@ out_data_g = gpuarray.to_gpu(np.random.rand(out_n, out_c, out_d, out_h, out_w).a
 out_data = ctypes.c_void_p(int(out_data_g.gpudata))
 print("Output tensor created")
 
-# Not implemented Find workspace size.
+# Not implemented find convolution algorithm
 
 # Find required workspace size.
 '''
@@ -192,6 +193,15 @@ libcudnn.cudnnConvolutionForward(cudnn_context,
                                 out_desc, 
                                 out_data)
 print(type(out_data_g))
+out_data_np = np.array(out_data_g)
+print(out_data_np)
 
-#TODO: Verify this code
+#TODO: Verification for cudnn convolution call
 #TODO: Integrate this with the existing benchmarking code.
+# TODO: Code to free up memory and cuda handles.
+ws_ptr = None
+libcudnn.cudnnDestroyTensorDescriptor(in_desc)
+libcudnn.cudnnDestroyTensorDescriptor(out_desc)
+libcudnn.cudnnDestroyFilterDescriptor(filt_desc)
+libcudnn.cudnnDestroyConvolutionDescriptor(conv_desc)
+libcudnn.cudnnDestroy(cudnn_context)

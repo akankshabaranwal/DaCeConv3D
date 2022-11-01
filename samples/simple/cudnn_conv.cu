@@ -51,7 +51,7 @@ int main()
         std::cout << "Created cuDNN handle" << std::endl;
 
         // input
-        const int in_n = 1, in_c = 1, in_d = 5, in_h = 5, in_w = 5;
+        const int in_n = 4, in_c = 4, in_d = 128, in_h = 128, in_w = 128;
         std::cout << "in_n: " << in_n << ", in_c: " << in_c << ", in_d: " << in_d << ", in_h: " << in_h << ", in_w: " << in_w << std::endl;
         cudnnTensorDescriptor_t in_desc;
         CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc));        
@@ -82,7 +82,7 @@ int main()
         CUDA_CALL(cudaMalloc(&filt_data, filt_k * filt_c * filt_d * filt_h * filt_w * sizeof(float)));
 
         // convolution
-        const int pad_d = 1, pad_h = 1, pad_w = 1, str_d=1, str_h = 1, str_w = 1, dil_d=1, dil_h = 1, dil_w = 1;
+        const int pad_d = 0, pad_h = 0, pad_w = 0, str_d=1, str_h = 1, str_w = 1, dil_d=1, dil_h = 1, dil_w = 1;
         std::cout << "pad_d: " << pad_d << ", pad_h: " << pad_h << ", pad_w: " << pad_w << ", str_d: " << str_d << ", str_h: " << str_h << ", str_w: " << str_w << ", dil_d: " << dil_d <<", dil_h: " << dil_h << ", dil_w: " << dil_w << std::endl;
         cudnnConvolutionDescriptor_t conv_desc;
         CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
@@ -121,22 +121,26 @@ int main()
 
         void *search_ws;
         cudaMalloc(&search_ws, 33554432);        
-        cudnnConvolutionFwdAlgoPerf_t perfResults;
-        int requestedAlgoCount = 1;
-        int returnedAlgoCount = 1;
+        cudnnConvolutionFwdAlgoPerf_t perfResults[CUDNN_CONVOLUTION_FWD_ALGO_COUNT];
+        int requestedAlgoCount = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
+        int returnedAlgoCount;
         CUDNN_CALL(cudnnFindConvolutionForwardAlgorithmEx(cudnn, 
-                                                        in_desc, 
-                                                        in_data, 
+                                                        in_desc,
+                                                        in_data,
                                                         filt_desc, 
                                                         filt_data, 
                                                         conv_desc, 
                                                         out_desc, 
                                                         out_data, 
-                                                        requestedAlgoCount, 
+                                                        CUDNN_CONVOLUTION_FWD_ALGO_COUNT, 
                                                         &returnedAlgoCount, 
-                                                        &perfResults, 
+                                                        perfResults, 
                                                         search_ws, 
                                                         33554432));
+      for (int i=0; i<returnedAlgoCount; i++)
+        std::cout<<perfResults[i].status<<std::endl;
+
+      return 0;
       // Till here the code works.
         assert(in_desc!=nullptr);
         assert(filt_desc!=nullptr);
@@ -144,11 +148,16 @@ int main()
         assert(conv_desc!=nullptr);
 
         cudaFree(search_ws);
+        
         cudnnConvolutionFwdAlgo_t selectedAlgo;
-        selectedAlgo = perfResults.algo;
+        //selectedAlgo = perfResults.algo;
+        selectedAlgo = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
         
         std::cout<<selectedAlgo;
-        size_t ws_size=33554432;
+
+        //return 0;
+        
+        size_t ws_size=3355443200;
         CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(cudnn, 
                                                           in_desc, 
                                                           filt_desc, 

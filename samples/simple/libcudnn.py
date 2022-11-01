@@ -5,6 +5,7 @@ import ctypes
 # https://github.com/hannes-brt/cudnn-python-wrappers/
 # Not all functions from the original source code have been implemented.
 # TODO: Fix the data types of alpha beta, hardcoded it to float for now. 
+# TODO: Write the cuda free function calls
 
 _libcudnn_libname_list = ['libcudnn.so', 'libcudnn.so.8', 'libcudnn.so.8.4.1']
 _libcudnn = None
@@ -329,36 +330,6 @@ class cudnnConvolutionFwdAlgoPerf(ctypes.Structure):
     def __repr__(self):
         return self.__str__()
         
-# _libcudnn.cudnnFindConvolutionForwardAlgorithmEx.restype = int
-# _libcudnn.cudnnFindConvolutionForwardAlgorithmEx.argtypes = [ctypes.c_void_p, # handle
-#                                                             ctypes.c_void_p, # indesc
-#                                                             ctypes.POINTER(ctypes.c_int), # indata
-#                                                             ctypes.c_void_p, # filtdesc
-#                                                             ctypes.POINTER(ctypes.c_int), # filtdata
-#                                                             ctypes.c_void_p, # convdesc
-#                                                             ctypes.c_void_p, # outdesc
-#                                                             ctypes.POINTER(ctypes.c_int), # outdata
-#                                                             ctypes.c_int, # requestAlgoCount
-#                                                             ctypes.c_void_p, #returnedAlgoCount
-#                                                             ctypes.c_void_p] #perfResults
-# def cudnnFindConvolutionForwardAlgorithm(handle, indesc, indata, filtdesc, filtdata, convdesc, outdesc, outdata, requestedAlgoCount, returnedAlgoCount, perfResults, search_ws):
-#     perfResultsType = cudnnConvolutionFwdAlgoPerf * requestedAlgoCount
-#     perfResults = perfResultsType()
-#     returnedAlgoCount = ctypes.c_int()
-#     status = _libcudnn.cudnnFindConvolutionForwardAlgorithm(handle,
-#                                                             indesc,
-#                                                             indata,
-#                                                             filtdesc,
-#                                                             filtdata,
-#                                                             convdesc,
-#                                                             outdesc,
-#                                                             outdata,
-#                                                             ctypes.c_int(requestedAlgoCount),
-#                                                             ctypes.byref(returnedAlgoCount),
-#                                                             ctypes.cast(perfResults, ctypes.POINTER(cudnnConvolutionFwdAlgoPerf)))
-#     cudnnCheckStatus(status)
-#     return perfResults[0:returnedAlgoCount.value]
-
 
 _libcudnn.cudnnGetConvolutionForwardWorkspaceSize.restype = int
 _libcudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = [ctypes.c_void_p,
@@ -403,7 +374,6 @@ def cudnnGetConvolutionForwardWorkspaceSize(handle, srcDesc, wDesc,
                                                             conv_algo,
                                                             ctypes.byref(sizeInBytes))
     cudnnCheckStatus(status)
-
     return sizeInBytes
 
 
@@ -443,4 +413,66 @@ def cudnnConvolutionForward(handle, alpha, srcDesc, srcData, wDesc, w,
                                             betaRef, 
                                             destDesc, 
                                             destData)
+    cudnnCheckStatus(status)
+
+
+_libcudnn.cudnnDestroyTensorDescriptor.restype = int
+_libcudnn.cudnnDestroyTensorDescriptor.argtypes = [ctypes.c_void_p]
+def cudnnDestroyTensorDescriptor(tensorDesc):
+    """"
+    Destroy a Tensor descriptor.
+    This function destroys a previously created Tensor descriptor object.
+    Parameters
+    ----------
+    tensorDesc : cudnnTensorDescriptor
+        Previously allocated Tensor descriptor object.
+    """
+
+    status = _libcudnn.cudnnDestroyTensorDescriptor(tensorDesc)
+    cudnnCheckStatus(status)
+
+_libcudnn.cudnnDestroyFilterDescriptor.restype = int
+_libcudnn.cudnnDestroyFilterDescriptor.argtypes = [ctypes.c_void_p]
+def cudnnDestroyFilterDescriptor(wDesc):
+    """"
+    Destroy filter descriptor.
+    This function destroys a previously created Tensor4D descriptor object.
+    Parameters
+    ----------
+    wDesc : cudnnFilterDescriptor
+    """
+
+    status = _libcudnn.cudnnDestroyFilterDescriptor(wDesc)
+    cudnnCheckStatus(status)
+
+
+_libcudnn.cudnnDestroyConvolutionDescriptor.restype = int
+_libcudnn.cudnnDestroyConvolutionDescriptor.argtypes = [ctypes.c_void_p]
+def cudnnDestroyConvolutionDescriptor(convDesc):
+    """"
+    Destroy a convolution descriptor.
+    This function destroys a previously created convolution descriptor object.
+    Parameters
+    ----------
+    convDesc : int
+        Previously created convolution descriptor.
+    """
+
+    status = _libcudnn.cudnnDestroyConvolutionDescriptor(convDesc)
+    cudnnCheckStatus(status)
+
+
+_libcudnn.cudnnDestroy.restype = int
+_libcudnn.cudnnDestroy.argtypes = [ctypes.c_void_p]
+def cudnnDestroy(handle):
+    """
+    Release cuDNN resources.
+    Release hardware resources used by cuDNN.
+    Parameters
+    ----------
+    handle : cudnnHandle
+        cuDNN context.
+    """
+
+    status = _libcudnn.cudnnDestroy(ctypes.c_void_p(handle))
     cudnnCheckStatus(status)

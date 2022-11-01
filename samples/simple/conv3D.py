@@ -26,7 +26,6 @@ from dace.transformation.optimizer import Optimizer
 from dace.transformation.auto import auto_optimize
 from dace import dtypes
 
-import cupy as cp
 
 # Define constants for filter dimensions
 global kdim
@@ -172,7 +171,7 @@ def rundacesdfgprofiling(dace_fun, Input, kernel, Output, inchannels, indepth, i
 
 # Place holder function for pytorch reference code for profiling.
 def timetorchgpu_conv3D(input, filter):
-    op=F.nn.conv3d(input, filter, stride=1, padding='valid')
+    op=F.conv3d(input, filter, stride=1, padding='valid')
 
 # Parse csv file to return a pandas array
 def parsecsv(csv):
