@@ -145,7 +145,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     # m_n.map.schedule = dace.ScheduleType.GPU_ThreadBlock
     return
 
-# Simple parallel 3D convolution
+# Simple parallel 3D convolution. Direct convolution
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
 def dace_conv3d( Input: dtype[d_batchsize, d_inchannels, d_indepth, d_inheight, d_inwidth] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_inchannels, kdim, kdim, kdim] @dace.StorageType.GPU_Global,
@@ -155,6 +155,9 @@ def dace_conv3d( Input: dtype[d_batchsize, d_inchannels, d_indepth, d_inheight, 
         for kd, kh, kw, ic in dace.map[0:kdim, 0:kdim, 0:kdim, 0:d_inchannels]:
             r_tmp = r_tmp + Input[n, ic, d+kd, h+kh, w+kw] * kernel[oc, ic, kd, kh, kw]
         Output[n, oc, d, h, w] = r_tmp
+
+
+# Gemm formulation of 3D convolution
 
 
 # Dace profiling method, Returns median values in ms

@@ -33,10 +33,9 @@ parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set
 parser.add_argument('-lastlayer','--lastlayer', type=int, default=1, help='set number of total iterations')
 parser.add_argument('-currlayer','--currlayer', type=int, default=0, help='set number of total iterations')
 
-# Charts
-# TODO: Check if you can plot and compare different versions of optimizations
-# FIXME: Something is wrong with subplot when the csv file has just one row  
+# TODO: Check if you can plot and compare different versions of dace optimizations
 # TODO: Automate the roofline analysis plot
+# FIXME: Something is wrong with subplot when the csv file has just one row  
 
 args = parser.parse_args()
 
@@ -96,7 +95,7 @@ data_type = libcudnn.cudnnDataType['CUDNN_DATA_FLOAT']
 tensor_dim = 5
 conv_dim = tensor_dim-2
 convolution_mode = libcudnn.cudnnConvolutionMode['CUDNN_CROSS_CORRELATION']
-convolution_algo = libcudnn.cudnnConvolutionFwdAlgo['CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM']
+convolution_algo = libcudnn.cudnnConvolutionFwdAlgo['CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM']
 ''' Available algorithms for 3d convolution cudnn are: 
 CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
 CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM

@@ -88,7 +88,7 @@ cudnnDataType = {
 # filter used for the convolution can be applied in two different ways, corresponding
 # mathematically to a convolution or to a cross-correlation. (A cross-correlation is
 # equivalent to a convolution with its filter rotated by 180 degrees.)
-cudnnConvolutionMode = {
+cudnnConvolutionMode = {    
     'CUDNN_CONVOLUTION': 0, # In this mode, a convolution operation will be done
                             # when applying the filter to the images.
     'CUDNN_CROSS_CORRELATION': 1 # In this mode, a cross-correlation operation will
