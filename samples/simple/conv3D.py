@@ -157,9 +157,6 @@ def dace_conv3d( Input: dtype[d_batchsize, d_inchannels, d_indepth, d_inheight, 
         Output[n, oc, d, h, w] = r_tmp
 
 
-# Gemm formulation of 3D convolution
-
-
 # Dace profiling method, Returns median values in ms
 def rundacesdfgprofiling(dace_fun, Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, reps):
     # Temporarily set the DACE_profiling config to True

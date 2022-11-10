@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+# Added by abaranwal
+daceml/
+samples/simple/results/
+samples/simple/profileresults/
+samples/simple/outputplots/
+samples/simple/pytorch/
+
 # Distribution / packaging
 .Python
 build/
