@@ -747,7 +747,7 @@ def _block_gather(pv: 'ProgramVisitor',
 
 @oprepo.replaces('dace.comm.Redistribute')
 def _redistribute(pv: 'ProgramVisitor', sdfg: SDFG, state: SDFGState, in_buffer: str, in_subarray: str, out_buffer: str,
-                  out_subarray: str):
+                  out_subarray: str, contiguous: bool=False):
     """ Redistributes an Array using process-grids, sub-arrays, and the Redistribute library node.
         :param in_buffer: Name of the (local) input Array descriptor.
         :param in_subarray: Input sub-array descriptor.
@@ -758,7 +758,7 @@ def _redistribute(pv: 'ProgramVisitor', sdfg: SDFG, state: SDFGState, in_buffer:
     in_desc = sdfg.arrays[in_buffer]
     out_desc = sdfg.arrays[out_buffer]
 
-    rdistrarray_name = sdfg.add_rdistrarray(in_subarray, out_subarray)
+    rdistrarray_name = sdfg.add_rdistrarray(in_subarray, out_subarray, contiguous=contiguous)
 
     from dace.libraries.mpi import Dummy, Redistribute
     tasklet = Dummy(rdistrarray_name, [
@@ -767,14 +767,27 @@ def _redistribute(pv: 'ProgramVisitor', sdfg: SDFG, state: SDFGState, in_buffer:
         f'int {rdistrarray_name}_recvs;', f'MPI_Datatype* {rdistrarray_name}_recv_types;',
         f'int* {rdistrarray_name}_src_ranks;', f'int {rdistrarray_name}_self_copies;',
         f'int* {rdistrarray_name}_self_src;', f'int* {rdistrarray_name}_self_dst;',
-        f'int* {rdistrarray_name}_self_size;'
+        f'int* {rdistrarray_name}_self_size;',
+        f'long long int* {rdistrarray_name}_send_sizes;',
+        f'double {rdistrarray_name}_total_send_size;',
+        f'double {rdistrarray_name}_total_copy_size;',
+        f'MPI_Request* {rdistrarray_name}_send_req;',
+        f'MPI_Request* {rdistrarray_name}_recv_req;',
+        f'MPI_Status* {rdistrarray_name}_send_status;',
+        f'MPI_Status* {rdistrarray_name}_recv_status;',
+        f'int* {rdistrarray_name}_fix_send_src;',
+        f'int* {rdistrarray_name}_fix_send_size;',
+        f'int* {rdistrarray_name}_fix_recv_dst;',
+        f'int* {rdistrarray_name}_fix_recv_size;',
+        f'{in_desc.dtype.ctype}** {rdistrarray_name}_send_buffers;',
+        f'{out_desc.dtype.ctype}** {rdistrarray_name}_recv_buffers;'
     ])
     state.add_node(tasklet)
     _, scal = sdfg.add_scalar(rdistrarray_name, dace.int32, transient=True)
     wnode = state.add_write(rdistrarray_name)
     state.add_edge(tasklet, '__out', wnode, None, Memlet.from_array(rdistrarray_name, scal))
 
-    libnode = Redistribute('_Redistribute_', rdistrarray_name)
+    libnode = Redistribute('_Redistribute_', rdistrarray_name, contiguous=contiguous)
 
     inbuf_range = None
     if isinstance(in_buffer, tuple):
@@ -941,6 +954,7 @@ def _bcgather(pv: 'ProgramVisitor', sdfg: SDFG, state: SDFGState, in_buffer: str
     return None
 
 
+@oprepo.replaces('dace.distr.MatMult')
 @oprepo.replaces('distr.MatMult')
 def _distr_matmult(pv: 'ProgramVisitor',
                    sdfg: SDFG,

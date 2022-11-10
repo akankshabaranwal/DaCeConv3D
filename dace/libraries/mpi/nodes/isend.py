@@ -5,6 +5,7 @@ import dace.sdfg.nodes
 from dace.transformation.transformation import ExpandTransformation
 from .. import environments
 from dace import dtypes
+from dace.libraries.mpi.nodes.node import MPINode
 
 
 @dace.library.expansion
@@ -48,7 +49,8 @@ class ExpandIsendMPI(ExpandTransformation):
                                           node.in_connectors,
                                           node.out_connectors,
                                           code,
-                                          language=dace.dtypes.Language.CPP)
+                                          language=dace.dtypes.Language.CPP,
+                                          side_effects=True)
         conn = tasklet.in_connectors
         conn = {c: (dtypes.int32 if c == '_dest' else t) for c, t in conn.items()}
         tasklet.in_connectors = conn
@@ -59,7 +61,7 @@ class ExpandIsendMPI(ExpandTransformation):
 
 
 @dace.library.node
-class Isend(dace.sdfg.nodes.LibraryNode):
+class Isend(MPINode):
 
     # Global properties
     implementations = {

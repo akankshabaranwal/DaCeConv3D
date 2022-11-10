@@ -360,11 +360,13 @@ class RedistrArray(object):
     name = Property(dtype=str, desc="The redistribution's name.")
     array_a = Property(dtype=str, allow_none=True, default=None, desc="Sub-array that will be redistributed.")
     array_b = Property(dtype=str, allow_none=True, default=None, desc="Output sub-array.")
+    contiguous = Property(dtype=bool, default=False, desc="Optimization for contiguous blocks.")
 
-    def __init__(self, name: str, array_a: str, array_b: str):
+    def __init__(self, name: str, array_a: str, array_b: str, contiguous: bool=False):
         self.name = name
         self.array_a = array_a
         self.array_b = array_b
+        self.contiguous = bool(contiguous)
         self._validate()
 
     def validate(self):
@@ -417,6 +419,8 @@ class RedistrArray(object):
             __state->{self.name}_sends = 0;
             __state->{self.name}_recvs = 0;
             __state->{self.name}_self_copies = 0;
+            __state->{self.name}_total_send_size = 0;
+            __state->{self.name}_total_copy_size = 0;
             int max_sends = 1;
             int max_recvs = 1;
 
@@ -443,6 +447,17 @@ class RedistrArray(object):
             __state->{self.name}_self_src = new int[max_sends * {len(array_a.shape)}];
             __state->{self.name}_self_dst = new int[max_sends * {len(array_b.shape)}];
             __state->{self.name}_self_size = new int[max_sends * {len(array_a.shape)}];
+            __state->{self.name}_send_sizes = new long long int[max_sends];
+            __state->{self.name}_send_req = new MPI_Request[max_sends];
+            __state->{self.name}_recv_req = new MPI_Request[max_recvs];
+            __state->{self.name}_send_status = new MPI_Status[max_sends];
+            __state->{self.name}_recv_status = new MPI_Status[max_recvs];
+            __state->{self.name}_fix_send_src = new int[max_sends * {len(array_a.shape)}];
+            __state->{self.name}_fix_send_size = new int[max_sends * {len(array_a.shape)}];
+            __state->{self.name}_send_buffers = new {array_a.dtype.ctype}*[max_sends];
+            __state->{self.name}_fix_recv_dst = new int[max_recvs * {len(array_b.shape)}];
+            __state->{self.name}_fix_recv_size = new int[max_recvs * {len(array_b.shape)}];
+            __state->{self.name}_recv_buffers = new {array_b.dtype.ctype}*[max_recvs];
         """
         tmp += f"""
             if (__state->{array_b.pgrid}_valid) {{
@@ -503,13 +518,41 @@ class RedistrArray(object):
                 __state->{self.name}_self_copies++;
                 // printf("({self.array_a} -> {self.array_b}) I am rank %d and I self-copy {{I receive from %d%d (%d - %d) in (%d, %d) size (%d, %d)}} \\n", myrank, pcoords[0], pcoords[1], cart_rank, cart_rank, origin[0], origin[1], subsizes[0], subsizes[1]);
             }} else {{
-                MPI_Type_create_subarray({len(array_b.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_b.dtype.base_type)}, &__state->{self.name}_recv_types[__state->{self.name}_recvs]);
-                MPI_Type_commit(&__state->{self.name}_recv_types[__state->{self.name}_recvs]);
-                __state->{self.name}_src_ranks[__state->{self.name}_recvs] = cart_rank;
-                // printf("({self.array_a} -> {self.array_b}) I am rank %d and I receive from %d%d (%d - %d) in (%d, %d) size (%d, %d) \\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_src_ranks[__state->{self.name}_recvs], origin[0], origin[1], subsizes[0], subsizes[1]);
-                __state->{self.name}_recvs++;
-            }}
+                int total_size = 1;
         """
+        for i in range(len(array_b.shape)):
+            tmp += f"""
+                __state->{self.name}_fix_recv_dst[__state->{self.name}_recvs * {len(array_b.shape)} + {i}] = origin[{i}];
+                __state->{self.name}_fix_recv_size[__state->{self.name}_recvs * {len(array_a.shape)} + {i}] = subsizes[{i}];
+                total_size *= subsizes[{i}];
+            """
+        if self.contiguous:
+            tmp += f"""
+
+                    //if (__state->{self.name}_recv_buffers == __state->__rdistrarray_0_recv_buffers)
+                    //cudaMalloc((void**)&(__state->{self.name}_recv_buffers[__state->{self.name}_recvs]), total_size * sizeof({array_b.dtype.ctype}));
+
+                    MPI_Type_create_subarray({len(array_b.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_b.dtype.base_type)}, &__state->{self.name}_recv_types[__state->{self.name}_recvs]);
+                    MPI_Type_commit(&__state->{self.name}_recv_types[__state->{self.name}_recvs]);
+                    __state->{self.name}_src_ranks[__state->{self.name}_recvs] = cart_rank;
+                    // printf("({self.array_a} -> {self.array_b}) I am rank %d and I receive from %d%d (%d - %d) in (%d, %d) size (%d, %d) \\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_src_ranks[__state->{self.name}_recvs], origin[0], origin[1], subsizes[0], subsizes[1]);
+                    __state->{self.name}_recvs++;
+                }}
+            """
+        else:
+            tmp += f"""
+
+                    __state->{self.name}_recv_buffers[__state->{self.name}_recvs] = new {array_b.dtype.ctype}[total_size];
+                    //if (__state->{self.name}_recv_buffers == __state->__rdistrarray_0_recv_buffers)
+                    //cudaMalloc((void**)&(__state->{self.name}_recv_buffers[__state->{self.name}_recvs]), total_size * sizeof({array_b.dtype.ctype}));
+
+                    MPI_Type_create_subarray({len(array_b.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_b.dtype.base_type)}, &__state->{self.name}_recv_types[__state->{self.name}_recvs]);
+                    MPI_Type_commit(&__state->{self.name}_recv_types[__state->{self.name}_recvs]);
+                    __state->{self.name}_src_ranks[__state->{self.name}_recvs] = cart_rank;
+                    // printf("({self.array_a} -> {self.array_b}) I am rank %d and I receive from %d%d (%d - %d) in (%d, %d) size (%d, %d) \\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_src_ranks[__state->{self.name}_recvs], origin[0], origin[1], subsizes[0], subsizes[1]);
+                    __state->{self.name}_recvs++;
+                }}
+            """
         for i in range(len(array_b.shape)):
             tmp += f"}}"
         tmp += "}"
@@ -568,13 +611,45 @@ class RedistrArray(object):
             tmp += f"int cart_rank = dace::comm::cart_rank({len(grid_b.shape)}, __state->{grid_b.name}_dims, pcoords);\n"
         tmp += f"""
             if (myrank != cart_rank) {{ // not self-copy
-                MPI_Type_create_subarray({len(array_a.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_a.dtype.base_type)}, &__state->{self.name}_send_types[__state->{self.name}_sends]);
-                MPI_Type_commit(&__state->{self.name}_send_types[__state->{self.name}_sends]);
-                __state->{self.name}_dst_ranks[__state->{self.name}_sends] = cart_rank;
-                // printf("({self.array_a} -> {self.array_b}) I am rank %d and I send to %d%d (%d - %d) from (%d, %d) size (%d, %d)\\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_dst_ranks[__state->{self.name}_sends], origin[0], origin[1], subsizes[0], subsizes[1]);
-                __state->{self.name}_sends++;
-            }}
         """
+        for i in range(len(array_a.shape)):
+            tmp += f"""
+                __state->{self.name}_fix_send_src[__state->{self.name}_sends * {len(array_a.shape)} + {i}] = origin[{i}];
+                __state->{self.name}_fix_send_size[__state->{self.name}_sends * {len(array_b.shape)} + {i}] = subsizes[{i}];
+            """
+        if self.contiguous:
+            tmp += f"""
+
+                    __state->{self.name}_send_sizes[__state->{self.name}_sends] = std::accumulate(subsizes, subsizes + {len(array_a.subshape)}, 1, std::multiplies<long long int>());
+                    
+                    
+                    //if (__state->{self.name}_send_buffers == __state->__rdistrarray_0_send_buffers)
+                    //cudaMalloc((void**)&(__state->{self.name}_send_buffers[__state->{self.name}_sends]), __state->{self.name}_send_sizes[__state->{self.name}_sends] * sizeof({array_a.dtype.ctype}));
+
+                    MPI_Type_create_subarray({len(array_a.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_a.dtype.base_type)}, &__state->{self.name}_send_types[__state->{self.name}_sends]);
+                    MPI_Type_commit(&__state->{self.name}_send_types[__state->{self.name}_sends]);
+                    __state->{self.name}_dst_ranks[__state->{self.name}_sends] = cart_rank;
+                    // printf("({self.array_a} -> {self.array_b}) I am rank %d and I send to %d%d (%d - %d) from (%d, %d) size (%d, %d)\\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_dst_ranks[__state->{self.name}_sends], origin[0], origin[1], subsizes[0], subsizes[1]);
+                    __state->{self.name}_sends++;
+                }}
+            """
+        else:
+            tmp += f"""
+
+                    __state->{self.name}_send_sizes[__state->{self.name}_sends] = std::accumulate(subsizes, subsizes + {len(array_a.subshape)}, 1, std::multiplies<long long int>());
+                    
+                    
+                    __state->{self.name}_send_buffers[__state->{self.name}_sends] = new {array_a.dtype.ctype}[__state->{self.name}_send_sizes[__state->{self.name}_sends]];
+                    //if (__state->{self.name}_send_buffers == __state->__rdistrarray_0_send_buffers)
+                    //cudaMalloc((void**)&(__state->{self.name}_send_buffers[__state->{self.name}_sends]), __state->{self.name}_send_sizes[__state->{self.name}_sends] * sizeof({array_a.dtype.ctype}));
+
+                    MPI_Type_create_subarray({len(array_a.shape)},  sizes, subsizes, origin, MPI_ORDER_C, {utils.MPI_DDT(array_a.dtype.base_type)}, &__state->{self.name}_send_types[__state->{self.name}_sends]);
+                    MPI_Type_commit(&__state->{self.name}_send_types[__state->{self.name}_sends]);
+                    __state->{self.name}_dst_ranks[__state->{self.name}_sends] = cart_rank;
+                    // printf("({self.array_a} -> {self.array_b}) I am rank %d and I send to %d%d (%d - %d) from (%d, %d) size (%d, %d)\\n", myrank, pcoords[0], pcoords[1], cart_rank, __state->{self.name}_dst_ranks[__state->{self.name}_sends], origin[0], origin[1], subsizes[0], subsizes[1]);
+                    __state->{self.name}_sends++;
+                }}
+            """
         for i in range(len(array_b.shape)):
             tmp += f"}}"
         tmp += "}"
@@ -584,17 +659,49 @@ class RedistrArray(object):
     def exit_code(self, sdfg):
         """ Outputs MPI deallocation code for the redistribution. """
         array_a = sdfg.subarrays[self.array_a]
-        return f"""
-            if (__state->{array_a.pgrid}_valid) {{
-                for (auto __idx = 0; __idx < __state->{self.name}_sends; ++__idx) {{
-                    MPI_Type_free(&__state->{self.name}_send_types[__idx]);
+        code = f"""
+            {{
+                int myrank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+                if (myrank == 0) printf("Rank %d total send %f GB\\nRank %d total copy %f GB\\n", myrank, __state->{self.name}_total_send_size * 8.0 / 1e9, myrank, __state->{self.name}_total_copy_size * 8.0 / 1e9);
+                if (__state->{array_a.pgrid}_valid) {{
+                    for (auto __idx = 0; __idx < __state->{self.name}_sends; ++__idx) {{
+                        MPI_Type_free(&__state->{self.name}_send_types[__idx]);
+                    }}
                 }}
-            }}
-            delete[] __state->{self.name}_send_types;
-            delete[] __state->{self.name}_dst_ranks;
-            delete[] __state->{self.name}_recv_types;
-            delete[] __state->{self.name}_src_ranks;
-            delete[] __state->{self.name}_self_src;
-            delete[] __state->{self.name}_self_dst;
-            delete[] __state->{self.name}_self_size;
+                delete[] __state->{self.name}_send_types;
+                delete[] __state->{self.name}_dst_ranks;
+                delete[] __state->{self.name}_recv_types;
+                delete[] __state->{self.name}_src_ranks;
+                delete[] __state->{self.name}_self_src;
+                delete[] __state->{self.name}_self_dst;
+                delete[] __state->{self.name}_self_size;
+                delete[] __state->{self.name}_send_sizes;
+                delete[] __state->{self.name}_send_req;
+                delete[] __state->{self.name}_recv_req;
+                delete[] __state->{self.name}_send_status;
+                delete[] __state->{self.name}_recv_status;
+                delete[] __state->{self.name}_fix_send_src;
+                delete[] __state->{self.name}_fix_send_size;
+                delete[] __state->{self.name}_fix_recv_dst;
+                delete[] __state->{self.name}_fix_recv_size;
         """
+        if not self.contiguous:
+            code += f"""
+                    for (auto __idx = 0; __idx < __state->{self.name}_sends; ++__idx) {{
+                        delete[] __state->{self.name}_send_buffers[__idx];
+                        //if (__state->{self.name}_send_buffers == __state->__rdistrarray_0_send_buffers)
+                        //cudaFree(__state->{self.name}_send_buffers[__idx]);
+                    }}
+                    delete[] __state->{self.name}_send_buffers;
+                    for (auto __idx = 0; __idx < __state->{self.name}_recvs; ++__idx) {{
+                        delete[] __state->{self.name}_recv_buffers[__idx];
+                        //if (__state->{self.name}_recv_buffers == __state->__rdistrarray_0_recv_buffers)
+                        //cudaFree(__state->{self.name}_recv_buffers[__idx]);
+                    }}
+                    delete[] __state->{self.name}_recv_buffers;
+            """
+        code += f"""
+                }}
+            """
+        return code

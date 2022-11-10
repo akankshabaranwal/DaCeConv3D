@@ -62,6 +62,7 @@ class StateGraphView(object):
     ``SDFGState`` and ``StateSubgraphView`` inherit from this class to share
     methods.
     """
+
     def __init__(self, *args, **kwargs):
         self._clear_scopedict_cache()
 
@@ -709,7 +710,8 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
     executions = SymbolicProperty(default=0,
                                   desc="The number of times this state gets "
                                   "executed (0 stands for unbounded)")
-    dynamic_executions = Property(dtype=bool, default=True, desc="The number of executions of this state " "is dynamic")
+    dynamic_executions = Property(dtype=bool, default=True, desc="The number of executions of this state "
+                                  "is dynamic")
 
     ranges = DictProperty(key_type=symbolic.symbol,
                           value_type=Range,
@@ -813,9 +815,9 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
         if not isinstance(memlet, mm.Memlet):
             raise TypeError("Memlet is not of type Memlet (type: %s)" % str(type(memlet)))
 
-        if u_connector and isinstance(u, nd.AccessNode):
+        if u_connector and isinstance(u, nd.AccessNode) and u_connector not in u.out_connectors:
             u.add_out_connector(u_connector, force=True)
-        if v_connector and isinstance(v, nd.AccessNode):
+        if v_connector and isinstance(v, nd.AccessNode) and v_connector not in v.in_connectors:
             v.add_in_connector(v_connector, force=True)
 
         self._clear_scopedict_cache()
@@ -1013,6 +1015,7 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
         code_init: str = "",
         code_exit: str = "",
         location: dict = None,
+        side_effects: Optional[bool] = None,
         debuginfo=None,
     ):
         """ Adds a tasklet to the SDFG state. """
@@ -1035,6 +1038,7 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
             code_init=code_init,
             code_exit=code_exit,
             location=location,
+            side_effects=side_effects,
             debuginfo=debuginfo,
         ) if language != dtypes.Language.SystemVerilog else nd.RTLTasklet(
             name,
@@ -1047,6 +1051,7 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
             code_init=code_init,
             code_exit=code_exit,
             location=location,
+            side_effects=side_effects,
             debuginfo=debuginfo,
         )
         self.add_node(tasklet)
@@ -1102,6 +1107,12 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
 
         # Validate missing symbols
         missing_symbols = [s for s in symbols if s not in symbol_mapping]
+        if missing_symbols and parent:
+            # If symbols are missing, try to get them from the parent SDFG
+            parent_mapping = {s: s for s in missing_symbols if s in parent.symbols}
+            symbol_mapping.update(parent_mapping)
+            s.symbol_mapping = symbol_mapping
+            missing_symbols = [s for s in symbols if s not in symbol_mapping]
         if missing_symbols:
             raise ValueError('Missing symbols on nested SDFG "%s": %s' % (name, missing_symbols))
 
@@ -1163,7 +1174,8 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
             :return: (consume_entry, consume_exit) node 2-tuple
         """
         if len(elements) != 2:
-            raise TypeError("Elements must be a 2-tuple of " "(PE_index, num_PEs)")
+            raise TypeError("Elements must be a 2-tuple of "
+                            "(PE_index, num_PEs)")
         pe_tuple = (elements[0], SymbolicProperty.from_string(elements[1]))
 
         debuginfo = _getdebuginfo(debuginfo or self._default_lineinfo)
@@ -1639,8 +1651,6 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
 
             self.remove_edge(edge)
 
-            edges_remain = len(self.edges_between(edge.src, edge.dst)) > 0
-
             # Check if there are any other edges exiting the source node that
             # use the same connector
             for e in self.out_edges(edge.src):
@@ -1664,7 +1674,8 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
             if isinstance(edge.src, nd.EntryNode):
                 # If removing this edge orphans the entry node, replace the
                 # edge with an empty edge
-                if not edges_remain:
+                # NOTE: The entry node is an orphan iff it has no other outgoing edges.
+                if self.out_degree(edge.src) == 0:
                     self.add_nedge(edge.src, edge.dst, mm.Memlet())
                 if other_outgoing:
                     # If other inner memlets use the outer memlet, we have to
@@ -1674,7 +1685,8 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
             if isinstance(edge.dst, nd.ExitNode):
                 # If removing this edge orphans the exit node, replace the
                 # edge with an empty edge
-                if not edges_remain:
+                # NOTE: The exit node is an orphan iff it has no other incoming edges.
+                if self.in_degree(edge.dst) == 0:
                     self.add_nedge(edge.src, edge.dst, mm.Memlet())
                 if other_incoming:
                     # If other inner memlets use the outer memlet, we have to
@@ -1814,9 +1826,10 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
 
                 # Append input connectors and get mapping of connectors to data
                 for edge in self.in_edges(node):
-                    if edge.dst_conn is not None and edge.dst_conn.startswith("IN_"):
-                        conn_to_data[edge.data.data] = edge.dst_conn[3:]
-
+                    if edge.data.data in conn_to_data:
+                        raise NotImplementedError(
+                            f"Cannot fill scope connectors in SDFGState {self.label} because EntryNode {node.label} "
+                            f"has multiple input edges from data {edge.data.data}.")
                     # We're only interested in edges without connectors
                     if edge.dst_conn is not None or edge.data.data is None:
                         continue
@@ -1869,5 +1882,6 @@ class SDFGState(OrderedMultiDiConnectorGraph[nd.Node, mm.Memlet], StateGraphView
 
 class StateSubgraphView(SubgraphView, StateGraphView):
     """ A read-only subgraph view of an SDFG state. """
+
     def __init__(self, graph, subgraph_nodes):
         super().__init__(graph, subgraph_nodes)

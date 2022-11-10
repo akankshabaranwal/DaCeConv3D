@@ -4,6 +4,7 @@ import dace.properties
 import dace.sdfg.nodes
 from dace.transformation.transformation import ExpandTransformation
 from .. import environments
+from dace.libraries.mpi.nodes.node import MPINode
 
 
 @dace.library.expansion
@@ -19,12 +20,14 @@ class ExpandReduceMPI(ExpandTransformation):
             raise (NotImplementedError)
         if root.dtype.base_type != dace.dtypes.int32:
             raise ValueError("Reduce root must be an integer!")
-        
+
         comm = "MPI_COMM_WORLD"
         if node.grid:
             comm = f"__state->{node.grid}_comm"
+            code = f"if (__state->{node.grid}_size > 1) {{"
+        else:
+            code = ""
         
-        code = ""
         if in_place:
             if comm == "MPI_COMM_WORLD":
                 code += """
@@ -41,8 +44,12 @@ class ExpandReduceMPI(ExpandTransformation):
                 }} else {{            
             """
         code += f"MPI_Reduce(_inbuffer, _outbuffer, {count_str}, {mpi_dtype_str}, {node.op}, _root, {comm});"
+        
         if inbuffer == outbuffer:
+            code += "}" 
+        if node.grid:
             code += "}"
+
         tasklet = dace.sdfg.nodes.Tasklet(node.name,
                                           node.in_connectors,
                                           node.out_connectors,
@@ -52,7 +59,7 @@ class ExpandReduceMPI(ExpandTransformation):
 
 
 @dace.library.node
-class Reduce(dace.sdfg.nodes.LibraryNode):
+class Reduce(MPINode):
 
     # Global properties
     implementations = {
@@ -86,7 +93,7 @@ class Reduce(dace.sdfg.nodes.LibraryNode):
                 inbuffer = sdfg.arrays[e.data.data]
             if e.dst_conn == "_root":
                 root = sdfg.arrays[e.data.data]
-        
+
         in_place = False
         if inpname == outname:
             in_place = True

@@ -6,6 +6,7 @@ from dace import dtypes
 from dace.symbolic import symstr
 from dace.transformation.transformation import ExpandTransformation
 from .. import environments
+from dace.libraries.mpi.nodes.node import MPINode
 
 
 @dace.library.expansion
@@ -46,8 +47,11 @@ class ExpandBcastMPI(ExpandTransformation):
             comm = f"__state->{node.grid}_comm"
 
         code = f"""
+            {f"if (__state->{node.grid}_size > 1) {{" if node.grid else ""}
             MPI_Bcast({ref}_inbuffer, {count_str}, {mpi_dtype_str}, _root, {comm});
-            _outbuffer = _inbuffer;"""
+            {"}" if node.grid else ""}
+            _outbuffer = _inbuffer;
+        """
         tasklet = dace.sdfg.nodes.Tasklet(node.name,
                                           node.in_connectors,
                                           node.out_connectors,
@@ -57,7 +61,7 @@ class ExpandBcastMPI(ExpandTransformation):
 
 
 @dace.library.node
-class Bcast(dace.sdfg.nodes.LibraryNode):
+class Bcast(MPINode):
 
     # Global properties
     implementations = {
@@ -66,7 +70,7 @@ class Bcast(dace.sdfg.nodes.LibraryNode):
     default_implementation = "MPI"
 
     grid = dace.properties.Property(dtype=str, allow_none=True, default=None)
-    
+
     def __init__(self, name, grid=None, *args, **kwargs):
         super().__init__(name, *args, inputs={"_inbuffer", "_root"}, outputs={"_outbuffer"}, **kwargs)
         self.grid = grid
