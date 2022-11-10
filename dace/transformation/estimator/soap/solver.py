@@ -11,49 +11,59 @@ from dace import Config
 @dataclass
 class Solver():     
     cached_only : bool = False
-    caching_solutions: bool = True
+    caching_solutions: bool = False
     debug: bool = False
     conn : socket = field(default_factory = socket.socket, hash = False)
     status: str = "disconnected"
     solver_cache: Dict = field(default_factory=dict)
 
     def __post_init__(self):
-        self.cached_only = Config.get("soap", "solver", "only_db") 
+        self.cached_only = Config.get("soap", "solver", "only_db")
         self.caching_solutions = Config.get("soap", "solver", "caching_solver_solutions") 
     
     def start_solver(self):
-        if self.caching_solutions:
-            if path.getsize(Config.get("soap", "solver", "db_path")) > 0:
-                with open(Config.get("soap", "solver", "db_path"), "r") as solver_cache_file:
-                    self.solver_cache = json.load(solver_cache_file)
-        if self.cached_only:
-            return
+        #if self.caching_solutions:
+        #    if path.getsize(Config.get("soap", "solver", "db_path")) > 0:
+        #        with open(Config.get("soap", "solver", "db_path"), "r") as solver_cache_file:
+        #            self.solver_cache = json.load(solver_cache_file)
+        #if self.cached_only:
+        #    return
         # configuration
-        port = 30000
-        if Config.get("soap", "solver", "remote_matlab") :
-            address = Config.get("soap", "solver", "remote_solver_address")
-        else:
-            address = 'localhost'
-            # start matlab in background
-            # call("matlab.exe -nosplash -nodesktop -r \"cd('" + Config.get("soap", "solver", "local_solver_path") + 
-            #     "'); BackgroundSolver(" + str(port) + ");exit\"", shell=True)
-            # try:
-            #     call("/usr/local/MATLAB/R2021a/bin/matlab -nosplash -nodesktop -r \"cd('/home/alexnick/Projects/sdg/matlab'); BackgroundSolver(" + str(port) + ");exit\"", shell=True, timeout=1)
-            # except TimeoutExpired:
-            #     pass
+        address = 'localhost'
+        port = 50000
+        #if Config.get("soap", "solver", "remote_matlab"):
+        #    address = Config.get("soap", "solver", "remote_solver_address")
+        #else:
+        #    address = 'localhost'
+        #    # start matlab in background
+        #    # call("matlab.exe -nosplash -nodesktop -r \"cd('" + Config.get("soap", "solver", "local_solver_path") + 
+        #    #     "'); BackgroundSolver(" + str(port) + ");exit\"", shell=True)
+        #    # try:
+        #    #     call("/usr/local/MATLAB/R2021a/bin/matlab -nosplash -nodesktop -r \"cd('/home/alexnick/Projects/sdg/matlab'); BackgroundSolver(" + str(port) + ");exit\"", shell=True, timeout=1)
+        #    # except TimeoutExpired:
+        #    #     pass
 
 
 
         # initialize matlab connection
+        print("AB: Initializing socket connection")
+
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
+        print("AB: Done initializing socket connection")
+
         if self.debug:        
             print('\nWaiting for the Matlab server to start....\n')
         while(True):
+            print("AB: Trying connection")
             try:
                 self.conn.connect((address,port))
                 break
             except:
+                print("AB: Failed connection attempt")
                 time.sleep(1)
+        
+        print("AB: Connection successfull")
+
         if self.debug:        
             self.print('\nConnected\n')
         self.status = "connected"

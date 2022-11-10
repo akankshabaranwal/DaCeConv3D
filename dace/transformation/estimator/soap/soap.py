@@ -753,7 +753,9 @@ class SoapStatement:
 
         # self.name = ';'.join(list(OrderedSet(self.name.split(';')).union(OrderedSet(in_S.name.split(';')))))
         # In Python versions >= 3.7, dict is guaranteed to preserve order
-        self.name = ';'.join(list(dict.fromkeys(self.name.split(';')) | dict.fromkeys(in_S.name.split(';'))))
+        #self.name = ';'.join(list(dict.fromkeys(self.name.split(';')) | dict.fromkeys(in_S.name.split(';'))))
+        tmpAB = list(dict.fromkeys(self.name.split(';'))) + list(dict.fromkeys(in_S.name.split(';')))
+        self.name = ';'.join(tmpAB)
         self.tasklet |= in_S.tasklet
         self.subgraph = self.subgraph.union(in_S.subgraph)
         self.output_arrays = {**self.output_arrays, **in_S.output_arrays}
