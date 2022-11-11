@@ -11,7 +11,7 @@ from dace import Config
 @dataclass
 class Solver():     
     cached_only : bool = False
-    caching_solutions: bool = False
+    caching_solutions: bool = True
     debug: bool = False
     conn : socket = field(default_factory = socket.socket, hash = False)
     status: str = "disconnected"
@@ -22,12 +22,12 @@ class Solver():
         self.caching_solutions = Config.get("soap", "solver", "caching_solver_solutions") 
     
     def start_solver(self):
-        #if self.caching_solutions:
-        #    if path.getsize(Config.get("soap", "solver", "db_path")) > 0:
-        #        with open(Config.get("soap", "solver", "db_path"), "r") as solver_cache_file:
-        #            self.solver_cache = json.load(solver_cache_file)
-        #if self.cached_only:
-        #    return
+        if self.caching_solutions:
+           if path.getsize(Config.get("soap", "solver", "db_path")) > 0:
+               with open(Config.get("soap", "solver", "db_path"), "r") as solver_cache_file:
+                   self.solver_cache = json.load(solver_cache_file)
+        if self.cached_only:
+           return
         # configuration
         address = 'localhost'
         port = 50000
