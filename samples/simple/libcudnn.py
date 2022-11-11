@@ -213,6 +213,26 @@ def cudnnSetTensorNdDescriptor(tensorDesc, dataType, tensor_dim, dims, strides):
                                                 strides_arr)                             
     cudnnCheckStatus(status)
 
+
+_libcudnn.cudnnSetTensorNdDescriptorEx.restype = int
+_libcudnn.cudnnSetTensorNdDescriptorEx.argtypes = [ctypes.c_void_p, # Descriptor
+                                                ctypes.c_int, # layout format
+                                                ctypes.c_int, # Datatype
+                                                ctypes.c_int,  # Dimension
+                                                ctypes.POINTER(ctypes.c_int), #dims.data()
+                                                ]
+def cudnnSetTensorNdDescriptorEx(tensorDesc, format, dataType,  tensor_dim, dims):
+    """
+    """
+    dims_arr = (ctypes.c_int * len(dims))(*dims) # Convert list to array
+    status = _libcudnn.cudnnSetTensorNdDescriptorEx(tensorDesc,
+                                                format,
+                                                dataType,
+                                                tensor_dim, 
+                                                dims_arr)                             
+    cudnnCheckStatus(status)
+
+
 _libcudnn.cudnnCreateFilterDescriptor.restype = int
 _libcudnn.cudnnCreateFilterDescriptor.argtypes = [ctypes.c_void_p]
 def cudnnCreateFilterDescriptor():
