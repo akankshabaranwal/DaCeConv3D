@@ -20,6 +20,7 @@ outwidth = inwidth - kdim + 1
 # TODO: Maybe add a feature in the original benchmarking code to make it accept both layouts
 # TODO: Replace the gemm formulation with the implicit gemm formulation
 # Gemm formulation of 3D convolution
+# Layout: NDHWC
 
 def direct_conv3d(Input, kernel, Output):
     for n in range(0, batchsize):
@@ -35,8 +36,9 @@ def direct_conv3d(Input, kernel, Output):
                                         tmp += Input[ n, d+kd, h+kh, w+kw, ic]*kernel[oc, kd, kh, kw, ic]
                         Output[n, d, h, w, oc] = tmp
 
+
 def implicit_gemm_conv3d( Input, kernel, Output ):
-    GEMM_M = batchsize*outdepth*outheight*outwidth
+    GEMM_M = batchsize * outdepth * outheight * outwidth
     GEMM_N = outchannels
     GEMM_K = inchannels * kdim * kdim * kdim
 
@@ -65,16 +67,15 @@ def implicit_gemm_conv3d( Input, kernel, Output ):
                 r = int(trs_residual/kdim)
                 s = int(trs_residual%kdim)
                 
-                d = o + kdim - t - 1 
-                h = p + kdim - r - 1
-                w = q + kdim - s - 1
+                d = o + t
+                h = p + r
+                w = q + s
 
                 a = Input[n, d, h, w, c]
                 b = kernel[k, t, r, s, c]
                 accum[0] = accum[0] + a*b
 
             Output[ n, o, p, q, k] = accum[0]
-
 
 
 Input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
@@ -146,8 +147,8 @@ out_n, out_c, out_d, out_h, out_w = outdims[0], outdims[1], outdims[2], outdims[
 print(f'outdims: {outdims}')
 out_desc = libcudnn.cudnnCreateTensorDescriptor()
 libcudnn.cudnnSetTensorNdDescriptorEx(out_desc,  tensor_format, data_type, tensor_dim, outdims)
-out_data_g = gpuarray.to_gpu(cudnn_output.cpu().numpy().astype(np.float32))                             
-out_data = ctypes.c_void_p(int(out_data_g.gpudata))
+cudnn_output_g = gpuarray.to_gpu(cudnn_output.cpu().numpy().astype(np.float32))                             
+cudnn_data = ctypes.c_void_p(int(cudnn_output_g.gpudata))
 
 
 # Compute cudnn workspace size
@@ -157,19 +158,25 @@ ws_data = ctypes.c_void_p(int(ws_ptr))
 
 libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_desc, filt_data, 
                                 conv_desc, convolution_algo, ws_data, ws_size.value, 
-                                beta, out_desc, out_data)
+                                beta, out_desc, cudnn_data)
 
 
 # Verification of implicit gemm code
 implicit_gemm_conv3d(Input, kernel, Output)
 Output = Output.cpu()
-dace_output_g = gpuarray.to_gpu(Output.numpy().astype(np.float32))
+imgemm_output = gpuarray.to_gpu(Output.numpy().astype(np.float32))
 print("CUDNN output:")
-print(out_data_g.get())
-print("dace output:")
-print(dace_output_g.get())
+print(cudnn_output_g.get())
+# print("implicit gemm output:")
+# print(imgemm_output.get())
 direct_conv3d(direct_input, direct_kernel, direct_output)
 print("Direct convolution:")
 print(direct_output)
-diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * indepth * inheight * inwidth )
-print('Difference between cudnn and dace values:', diff)
+direct_output_g = gpuarray.to_gpu(direct_output.cpu().numpy().astype(np.float32))
+
+diff = np.linalg.norm((cudnn_output_g - imgemm_output).get()) / (batchsize * outchannels * indepth * inheight * inwidth )
+print('Difference between cudnn and implicit gemm values:', diff)
+diff = np.linalg.norm(direct_output.cpu() - imgemm_output.get()) / (batchsize * outchannels * indepth * inheight * inwidth )
+print('Difference between direct convolution and implicit gemm values:', diff)
+diff = np.linalg.norm(cudnn_output_g.get() - direct_output_g.get()) / (batchsize * outchannels * indepth * inheight * inwidth )
+print('Difference between direct convolution and cudnn values:', diff)
