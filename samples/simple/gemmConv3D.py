@@ -55,8 +55,9 @@ def implicit_gemm_conv3d( Input, kernel, Output ):
             q = int(opq_residual%outwidth)
            
             accum = np.zeros([1])
+            k = gemm_j
+
             for gemm_k in range(0, GEMM_K):
-                k = gemm_j
                 
                 c = int(gemm_k/(kdim*kdim*kdim))
                 ctrs_residual = int(gemm_k%(kdim*kdim*kdim))
