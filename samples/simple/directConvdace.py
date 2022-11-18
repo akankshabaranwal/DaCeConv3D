@@ -18,6 +18,7 @@ d_batchsize = dace.symbol('d_batchsize')
 dtype = dace.float32
 np_dtype = np.float32
 
+
 # Optimize code on the GPU
 def optimize_for_gpu(sdfg: dace.SDFG):
     """ Optimize 3D convolution example for GPUs. """

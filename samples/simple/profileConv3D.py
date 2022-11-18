@@ -3,15 +3,13 @@
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
 import os
-import seaborn as sns
-import matplotlib.pyplot as plt
 import statistics
 import sys
+import glob
 
 import pycuda.autoinit
-import pycuda.driver as drv
 from pycuda import gpuarray
-import libcudnn, ctypes
+import libcudnn
 import numpy as np
 from convutils import prepareinputs, parsecsv, run_fun, createsummaryfile, createplots
 import dace
@@ -19,8 +17,8 @@ import torch
 import torch.nn.functional as F
 
 # Make this as a choice depending on the kind of experiment you run
-from directConv import *
-
+from directConvdace import *
+from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 import pandas as pd 
 
 parser = argparse.ArgumentParser(description='Process some integers.')
@@ -62,7 +60,6 @@ totaliter = args.totaliter
 currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
-#lastlayer = currlayer+1
 
 torch.cuda.empty_cache()
 
@@ -93,66 +90,14 @@ dil = 1
 stride = 1
 sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
 
-## cudnn fixed parameters init
-cudnn_context = libcudnn.cudnnCreate()
-tensor_format = libcudnn.cudnnTensorFormat['CUDNN_TENSOR_NCHW']
-data_type = libcudnn.cudnnDataType['CUDNN_DATA_FLOAT']
-tensor_dim = 5
-conv_dim = tensor_dim-2
-convolution_mode = libcudnn.cudnnConvolutionMode['CUDNN_CROSS_CORRELATION']
-convolution_algo = libcudnn.cudnnConvolutionFwdAlgo['CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM']
-''' Available algorithms for 3d convolution cudnn are: 
-CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
-CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
-CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING
-'''
-alpha = 1.0
-beta = 0
-c_int_p = ctypes.POINTER(ctypes.c_int)
-outdimsinit = [0, 0, 0, 0, 0]
-# cudnn convolution descriptor
-conv_desc = libcudnn.cudnnCreateConvolutionDescriptor()
-convpad = [pad, pad, pad]
-filtstr = [stride, stride, stride]
-convdil = [dil, dil, dil]
-libcudnn.cudnnSetConvolutionNdDescriptor(conv_desc, conv_dim, convpad, filtstr, convdil, convolution_mode, data_type)
+# Initializing cudnn
+conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil)
 
 
-## cudnn variable parameters init, these change across different layers
-# cudnn input
-dims = [batchsize, inchannels, indepth, inheight, inwidth]
-strides = [inchannels*indepth*inheight*inwidth, indepth*inheight*inwidth, inheight*inwidth, inwidth, 1]
-in_desc = libcudnn.cudnnCreateTensorDescriptor()
-libcudnn.cudnnSetTensorNdDescriptor(in_desc, data_type, tensor_dim, dims, strides)
-# TODO: Maybe simplify this conversion to gpuarray ??
-cudnn_input = d_input.detach().clone()
-cudnn_kernel = d_kernel.detach().clone()
-cudnn_output = d_output.detach().clone()
-in_data_g = gpuarray.to_gpu(cudnn_input.cpu().numpy().astype(np.float32))
-in_data = ctypes.c_void_p(int(in_data_g.gpudata))
+## cudnn variable parameters init, these change across different layers and are called multiple times
+cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
-# cudnn filter input
-filt_desc = libcudnn.cudnnCreateFilterDescriptor()
-filt_dims = [outchannels, inchannels, kdim, kdim, kdim]
-libcudnn.cudnnSetFilterNdDescriptor(filt_desc, data_type, tensor_format, tensor_dim, filt_dims)
-filt_data_g = gpuarray.to_gpu(cudnn_kernel.cpu().numpy().astype(np.float32))                                    
-filt_data = ctypes.c_void_p(int(filt_data_g.gpudata))
-
-# cudnn output
-outdims = libcudnn.cudnnGetConvolutionNdForwardOutputDim(conv_desc, in_desc, filt_desc, tensor_dim, outdimsinit)
-out_n, out_c, out_d, out_h, out_w = outdims[0], outdims[1], outdims[2], outdims[3], outdims[4]
-outstrides = [ out_c*out_d*out_h*out_w, out_d*out_h*out_w, out_h*out_w, out_w, 1]
-out_desc = libcudnn.cudnnCreateTensorDescriptor()
-libcudnn.cudnnSetTensorNdDescriptor(out_desc, data_type, tensor_dim, outdims, outstrides)
-out_data_g = gpuarray.to_gpu(cudnn_output.cpu().numpy().astype(np.float32))                               
-out_data = ctypes.c_void_p(int(out_data_g.gpudata))
-# Compute cudnn workspace size
-ws_size = libcudnn.cudnnGetConvolutionForwardWorkspaceSize(cudnn_context, in_desc, filt_desc, conv_desc, out_desc, convolution_algo)
-ws_ptr  = drv.mem_alloc(ws_size.value) if ws_size.value > 0 else 0
-ws_data = ctypes.c_void_p(int(ws_ptr))
-
-
-# Apply optimizations
+# Apply optimizations for dace
 optimize_for_gpu(sdfg_fun)
 optim_dace = sdfg_fun.compile()
 
@@ -182,8 +127,6 @@ def rundaceprofiling(run_dace_fun, reps):
     latest_file = max(list_of_files, key=os.path.getctime)
     df = pd.read_csv(latest_file)
     return df['Runtime_sec']
-
-
     
 median_dace = []
 median_cudnn = []
@@ -191,11 +134,8 @@ layer_names = []
 csv_columns = ['layer_name','dace_median','cudnn_median']
 summary = []
 
-# Clearing few cudnn variables
-ws_ptr = None
-libcudnn.cudnnDestroyTensorDescriptor(in_desc)
-libcudnn.cudnnDestroyTensorDescriptor(out_desc)
-libcudnn.cudnnDestroyFilterDescriptor(filt_desc)
+# Clearing cudnn variables
+in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 for layern in range(currlayer, lastlayer):
     d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern], 'NCDHW', kdim)
@@ -213,36 +153,8 @@ for layern in range(currlayer, lastlayer):
     print(f'INFO: NCDHW layout {layer_name}') 
     layer_names.append(layer_name)
 
-    ##  cudnn stuff
-    dims = [batchsize, inchannels, indepth, inheight, inwidth]
-    strides = [inchannels*indepth*inheight*inwidth, indepth*inheight*inwidth, inheight*inwidth, inwidth, 1]
-    in_desc = libcudnn.cudnnCreateTensorDescriptor()
-    libcudnn.cudnnSetTensorNdDescriptor(in_desc, data_type, tensor_dim, dims, strides)
-    cudnn_input = d_input.detach().clone()
-    cudnn_kernel = d_kernel.detach().clone()
-    cudnn_output = d_output.detach().clone()
-    in_data_g = gpuarray.to_gpu(cudnn_input.cpu().numpy().astype(np.float32))
-    in_data = ctypes.c_void_p(int(in_data_g.gpudata))
-    # cudnn filter input
-    filt_desc = libcudnn.cudnnCreateFilterDescriptor()
-    filt_dims = [outchannels, inchannels, kdim, kdim, kdim]
-    libcudnn.cudnnSetFilterNdDescriptor(filt_desc, data_type, tensor_format, tensor_dim, filt_dims)
-    filt_data_g = gpuarray.to_gpu(cudnn_kernel.cpu().numpy().astype(np.float32))                                    
-    filt_data = ctypes.c_void_p(int(filt_data_g.gpudata))
-    # cudnn output
-    outdims = libcudnn.cudnnGetConvolutionNdForwardOutputDim(conv_desc, in_desc, filt_desc, tensor_dim, outdimsinit)
-    out_n, out_c, out_d, out_h, out_w = outdims[0], outdims[1], outdims[2], outdims[3], outdims[4]
-    outstrides = [ out_c*out_d*out_h*out_w, out_d*out_h*out_w, out_h*out_w, out_w, 1]
-    out_desc = libcudnn.cudnnCreateTensorDescriptor()
-    libcudnn.cudnnSetTensorNdDescriptor(out_desc, data_type, tensor_dim, outdims, outstrides)
-    out_data_g = gpuarray.to_gpu(cudnn_output.cpu().numpy().astype(np.float32))                            
-    out_data = ctypes.c_void_p(int(out_data_g.gpudata))
-    # Compute cudnn workspace size
-    ws_size = libcudnn.cudnnGetConvolutionForwardWorkspaceSize(cudnn_context, in_desc, filt_desc, conv_desc, out_desc, convolution_algo)
-    ws_ptr  = drv.mem_alloc(ws_size.value) if ws_size.value > 0 else 0
-    ws_data = ctypes.c_void_p(int(ws_ptr))
+    cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
-    
     # Code for verification
     if verify:
         print("INFO: Running verification to compare against cudnn output")
@@ -324,9 +236,8 @@ for layern in range(currlayer, lastlayer):
                         launch_wait=setlaunchwait)
         print_time_statistics(times, [ "cudnn"])
     
-    libcudnn.cudnnDestroyTensorDescriptor(in_desc)
-    libcudnn.cudnnDestroyTensorDescriptor(out_desc)
-    libcudnn.cudnnDestroyFilterDescriptor(filt_desc)
+    in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+
 
 createsummaryfile(summary, outdir, csv_columns)
 createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary)
