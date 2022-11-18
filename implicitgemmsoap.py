@@ -94,7 +94,7 @@ def implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
 # GEMM_M = d_batchsize * d_outdepth * d_outheight * d_outwidth
 # GEMM_N = d_outchannels
 # GEMM_K = d_inchannels * d_kdim * d_kdim * d_kdim
-@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
+@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
 def dace_implicit_gemm_conv3d(dace_input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 dace_kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
                 dace_output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):

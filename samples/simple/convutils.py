@@ -70,6 +70,18 @@ def rundacesdfgprofiling(dace_fun, Input, kernel, Output, inchannels, indepth, i
     df = pd.read_csv(latest_file)
     return df['Runtime_sec']
 
+# Dace profiling method, Returns median values in ms
+def rundaceprofiling(run_dace_fun, reps):
+    # Temporarily set the DACE_profiling config to True
+    with dace.config.set_temporary('profiling', value=True):
+        # You can control the number of times a program is run with the treps configuration
+        with dace.config.set_temporary('treps', value=reps):
+            run_dace_fun()
+    list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
+    latest_file = max(list_of_files, key=os.path.getctime)
+    df = pd.read_csv(latest_file)
+    return df['Runtime_sec']
+
 # Place holder function for pytorch reference code for profiling.
 def timetorchgpu_conv3D(input, filter):
     op=F.conv3d(input, filter, stride=1, padding='valid')
@@ -86,12 +98,13 @@ def parsecsv(csv):
     return convparams
 
 # Data layout is NCDHW for pytorch
-def prepareinputs(currconv, layout, kdim):
+def prepareinputs(currconv, layout):
     inchannels = currconv["InChannel"]
     indepth = currconv["InputDepth"]
     inheight = currconv["InputHeight"]
     inwidth = currconv["InputWidth"]
     outchannels = currconv["OutputChannel"]
+    kdim = 3
     outdepth = indepth - kdim + 1
     outheight = inheight - kdim + 1
     outwidth = inheight - kdim + 1
@@ -104,15 +117,23 @@ def prepareinputs(currconv, layout, kdim):
         
         print(f'\n***** \n***** \n Parsed 3D Convolution Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
                 f'and Kernel parameters {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
-        return Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize
+    elif layout == 'NDHWC':
+        # For implicit gemm
+        Input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
+        kernel = torch.rand(outchannels, kdim, kdim, kdim, inchannels).cuda()
+        Output = torch.zeros(batchsize, outdepth, outheight, outwidth, outchannels).cuda()
     else:
-        sys.exit("ERROR: Layout not yet implemented")
+        sys.exit("!!! ERROR: Layout not yet implemented")
+    
+    return Input, kernel, Output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim
+    
 
 def run_fun(fun_name, warmupiter, totaliter):
     for i in range(0,warmupiter):
         fun_name()
     for i in range(0, totaliter):
         fun_name()
+
 
 # Helper functions to create summary plots, csvs to analyze performance
 

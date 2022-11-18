@@ -2,17 +2,15 @@ import dace
 import numpy as np
 from dace import dtypes
 
-# Define constants for filter dimensions
-global kdim
-kdim = 3
 
 # Define symbolic sizes for arbitrary inputs
-d_indepth = dace.symbol('d_indepth')
-d_inheight = dace.symbol('d_inheight')
-d_inwidth = dace.symbol('d_inwidth')
+d_outdepth = dace.symbol('d_outdepth')
+d_outheight = dace.symbol('d_outheight')
+d_outwidth = dace.symbol('d_outwidth')
 d_inchannels = dace.symbol('d_inchannels')
 d_outchannels = dace.symbol('d_outchannels')
 d_batchsize = dace.symbol('d_batchsize')
+d_kdim = dace.symbol('d_kdim')
 
 # Define data type to use
 dtype = dace.float32
@@ -90,11 +88,11 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 # Simple parallel 3D convolution. Direct convolution
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
-def dace_conv3d( Input: dtype[d_batchsize, d_inchannels, d_indepth, d_inheight, d_inwidth] @dace.StorageType.GPU_Global ,
-                kernel: dtype[d_outchannels, d_inchannels, kdim, kdim, kdim] @dace.StorageType.GPU_Global,
-                Output: dtype[d_batchsize, d_outchannels, d_indepth-kdim+1, d_inheight-kdim+1, d_inwidth-kdim+1] @dace.StorageType.GPU_Global):
-    for n, d, h, w, oc in dace.map[0:d_batchsize, 0:d_indepth-kdim+1, 0:d_inheight-kdim+1, 0:d_inwidth-kdim+1, 0:d_outchannels]:
+def dace_conv3d( Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1] @dace.StorageType.GPU_Global ,
+                kernel: dtype[d_outchannels, d_inchannels, d_kdim, d_kdim, d_kdim] @dace.StorageType.GPU_Global,
+                Output: dtype[d_batchsize, d_outchannels, d_outdepth, d_outheight, d_outwidth] @dace.StorageType.GPU_Global):
+    for n, d, h, w, oc in dace.map[0:d_batchsize, 0:d_outdepth, 0:d_outheight, 0:d_outwidth, 0:d_outchannels]:
         r_tmp = np.zeros([1], dtype=Input.dtype)
-        for kd, kh, kw, ic in dace.map[0:kdim, 0:kdim, 0:kdim, 0:d_inchannels]:
+        for kd, kh, kw, ic in dace.map[0:d_kdim, 0:d_kdim, 0:d_kdim, 0:d_inchannels]:
             r_tmp = r_tmp + Input[n, ic, d+kd, h+kh, w+kw] * kernel[oc, ic, kd, kh, kw]
         Output[n, oc, d, h, w] = r_tmp

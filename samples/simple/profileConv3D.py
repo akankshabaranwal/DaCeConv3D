@@ -16,8 +16,7 @@ import dace
 import torch
 import torch.nn.functional as F
 
-# Make this as a choice depending on the kind of experiment you run
-from directConvdace import *
+
 from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 import pandas as pd 
 
@@ -63,8 +62,19 @@ lastlayer = min(args.lastlayer, convparams.shape[0])
 
 torch.cuda.empty_cache()
 
-#outdir = f'./outputplots/out{math.floor(time.time())}'
+# Make this as a choice depending on the kind of experiment you run
+selectMethod = 'directConvdace'
+#selectMethod = 'implicitGemmdace'
+
+if selectMethod == 'directConvdace':
+    from directConvdace import *
+    layout = 'NCDHW'
+else:
+    from implicitGemmdace import *
+    layout = 'NDHWC'
+
 outdir = f'./outputplots/_out'
+#outdir = f'./outputplots/out{math.floor(time.time())}'
 #os.mkdir(outdir)
 with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'csv: {paramscsv}\n')
@@ -73,7 +83,7 @@ with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'set launch wait: {setlaunchwait}\n')
 
 args = parser.parse_args()
-d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0], 'NCDHW', kdim)
+d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[0], layout)
 
 ## Prepare inputs for pytorch fun
 t_input = d_input.clone()
@@ -85,13 +95,17 @@ inheight = np.int32(inheight)
 inwidth = np.int32(inwidth)
 outchannels = np.int32(outchannels)
 batchsize = np.int32(batchsize)
+outdepth = indepth - kdim + 1
+outheight = inheight - kdim + 1
+outwidth = inwidth - kdim + 1
+
 pad = 0
 dil = 1
 stride = 1
 sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
 
 # Initializing cudnn
-conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil)
+conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
 
 
 ## cudnn variable parameters init, these change across different layers and are called multiple times
@@ -113,20 +127,9 @@ def run_cudnn():
 # Function calls to run the optim dace function
 def run_optim_dace():
     optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,
-            d_inchannels=inchannels, d_indepth=indepth, d_inheight=inheight,d_inwidth=inwidth, 
-            d_outchannels=outchannels, d_batchsize=batchsize)
+            d_inchannels=inchannels, d_outdepth=outdepth, d_outheight=outheight,d_outwidth=outwidth, 
+            d_outchannels=outchannels, d_batchsize=batchsize, d_kdim=kdim)
 
-# Dace profiling method, Returns median values in ms
-def rundaceprofiling(run_dace_fun, reps):
-    # Temporarily set the DACE_profiling config to True
-    with dace.config.set_temporary('profiling', value=True):
-        # You can control the number of times a program is run with the treps configuration
-        with dace.config.set_temporary('treps', value=reps):
-            run_dace_fun()
-    list_of_files = glob.glob(f'.dacecache/*/profiling/results-*.csv')
-    latest_file = max(list_of_files, key=os.path.getctime)
-    df = pd.read_csv(latest_file)
-    return df['Runtime_sec']
     
 median_dace = []
 median_cudnn = []
@@ -138,7 +141,7 @@ summary = []
 in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 for layern in range(currlayer, lastlayer):
-    d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern], 'NCDHW', kdim)
+    d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[layern], layout)
     layersummary = {}
     t_input = d_input.clone()
     t_kernel = d_kernel.clone()
@@ -149,6 +152,10 @@ for layern in range(currlayer, lastlayer):
     inwidth = np.int32(inwidth)
     outchannels = np.int32(outchannels)
     batchsize = np.int32(batchsize)
+    outdepth = np.int32(indepth - kdim + 1)
+    outheight = np.int32(inheight - kdim + 1)
+    outwidth = np.int32(inwidth - kdim + 1)
+    
     layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
     print(f'INFO: NCDHW layout {layer_name}') 
     layer_names.append(layer_name)
@@ -162,12 +169,10 @@ for layern in range(currlayer, lastlayer):
         run_optim_dace()
         d_output = d_output.cpu()
         dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))                                    
-        diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * indepth * inheight * inwidth )
+        diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
         print('Difference between cudnn and dace values:', diff)
-        ## commented verif against pytorch
-        #refop = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
-        #refop = refop.cpu()
-        if(diff<=1e-5):
+
+        if(diff<=1e-3): #TODO: Check if the threshold should be reduced
             print(f"Verification successfull")
         else:
             sys.exit("!!! ERROR: Incorrect verification")

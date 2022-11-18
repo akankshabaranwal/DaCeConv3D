@@ -127,7 +127,7 @@ libcudnn.cudnnSetConvolutionNdDescriptor(conv_desc, conv_dim, convpad, filtstr, 
 # Input descriptor
 dims = [batchsize, inchannels, indepth, inheight, inwidth]
 in_desc = libcudnn.cudnnCreateTensorDescriptor()
-libcudnn.cudnnSetTensorNdDescriptorEx(in_desc, tensor_format, data_type,  tensor_dim, dims)
+libcudnn.cudnnSetTensorNdDescriptorEx(in_desc, tensor_format, data_type, tensor_dim, dims)
 print(f'Input dims: {dims}')
 # TODO: Maybe simplify this conversion to gpuarray ??
 
