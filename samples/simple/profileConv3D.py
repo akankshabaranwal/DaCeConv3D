@@ -73,7 +73,7 @@ else:
     from implicitGemmdace import *
     layout = 'NDHWC'
 
-outdir = f'./outputplots/_out'
+outdir = f'./outputplots/{selectMethod}_out'
 #outdir = f'./outputplots/out{math.floor(time.time())}'
 #os.mkdir(outdir)
 with open(f'./{outdir}/params.txt', 'w') as f:

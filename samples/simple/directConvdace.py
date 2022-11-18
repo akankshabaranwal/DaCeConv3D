@@ -2,6 +2,7 @@ import dace
 import numpy as np
 from dace import dtypes
 
+from dace.transformation.interstate import StateFusion
 
 # Define symbolic sizes for arbitrary inputs
 d_outdepth = dace.symbol('d_outdepth')
@@ -23,8 +24,8 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
     # Apply GPU transformation
-    #sdfg.apply_transformations_repeated(StateFusion)
-    #sdfg.simplify()
+    sdfg.apply_transformations_repeated(StateFusion)
+    sdfg.simplify()
     sdfg.apply_gpu_transformations()
     return
     # Expand the maps

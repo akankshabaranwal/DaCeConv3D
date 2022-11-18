@@ -3,6 +3,7 @@ import numpy as np
 from pycuda import gpuarray
 import pycuda.driver as drv
 
+
 def cudnn_init(pad, stride, dil, layout):## cudnn fixed parameters init
     cudnn_context = libcudnn.cudnnCreate()
     if(layout=='NCDHW'):
