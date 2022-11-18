@@ -155,14 +155,14 @@ sdfg_fun_conv3d(dace_input=dace_input, dace_kernel=dace_kernel, dace_output=dace
              d_inchannels = inchannels, d_batchsize = batchsize, d_outchannels = outchannels,
              d_outdepth = outdepth, d_outheight = outheight, d_outwidth = outwidth, 
              d_kdim = kdim)
-# implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
-# print(f'dace output is: {dace_output.cpu()}')
-# print(f'imgemm output is: {imgemm_output.cpu()}')
-# diff = np.linalg.norm(imgemm_output.cpu() - dace_output.cpu()) / (batchsize * outchannels * indepth * inheight * inwidth )
-# print('Difference between implicit gemm and dace converted values:', diff)
+implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
+#print(f'dace output is: {dace_output.cpu()}')
+#print(f'imgemm output is: {imgemm_output.cpu()}')
+diff = np.linalg.norm(imgemm_output.cpu() - dace_output.cpu()) / (batchsize * outchannels * indepth * inheight * inwidth )
+print('Difference between implicit gemm and dace converted values:', diff)
 
 # direct_conv3d(direct_input, direct_kernel, direct_output)
 # diff = np.linalg.norm(imgemm_output.cpu() - direct_output.cpu()) / (batchsize * outchannels * outdepth * outheight * outwidth )
 # print('Difference between implicit gemm and direct conv values:', diff)
-return_Q_conv3D = soap_analysis(sdfg_fun_conv3d, inchannels, batchsize, kdim, outheight, outwidth, outdepth, outchannels)
-print(f'For implicit gemm 3D convolution leading order terms are: {return_Q_conv3D}')
+# return_Q_conv3D = soap_analysis(sdfg_fun_conv3d, inchannels, batchsize, kdim, outheight, outwidth, outdepth, outchannels)
+# print(f'For implicit gemm 3D convolution leading order terms are: {return_Q_conv3D}')

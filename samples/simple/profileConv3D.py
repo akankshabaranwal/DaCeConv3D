@@ -1,14 +1,11 @@
 # abaranwal: Code to profile 3D convolution based on daceml functions
 
-from copy import deepcopy
-from conv3D import *
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import argparse
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import statistics
-import csv
 import sys
 
 import pycuda.autoinit
@@ -16,7 +13,15 @@ import pycuda.driver as drv
 from pycuda import gpuarray
 import libcudnn, ctypes
 import numpy as np
+from convutils import prepareinputs, parsecsv, run_fun, createsummaryfile, createplots
+import dace
+import torch
+import torch.nn.functional as F
 
+# Make this as a choice depending on the kind of experiment you run
+from directConv import *
+
+import pandas as pd 
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-paramscsv','--paramscsv', type=str, default='cosmoflow', help='select which csv to profile')
@@ -71,7 +76,7 @@ with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'set launch wait: {setlaunchwait}\n')
 
 args = parser.parse_args()
-d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0])
+d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[0], 'NCDHW', kdim)
 
 ## Prepare inputs for pytorch fun
 t_input = d_input.clone()
@@ -150,8 +155,6 @@ ws_data = ctypes.c_void_p(int(ws_ptr))
 # Apply optimizations
 optimize_for_gpu(sdfg_fun)
 optim_dace = sdfg_fun.compile()
-    
-# Function call for original dace conv3D
 
 # Function call for pytorch 3D conv
 def run_torch():
@@ -180,17 +183,11 @@ def rundaceprofiling(run_dace_fun, reps):
     df = pd.read_csv(latest_file)
     return df['Runtime_sec']
 
-def run_fun(fun_name):
-    for i in range(0,warmupiter):
-        fun_name()
-    for i in range(0, totaliter):
-        fun_name()
+
     
 median_dace = []
-median_torch = []
 median_cudnn = []
 layer_names = []
-#csv_columns = ['layer_name','dace_median','torch_median']
 csv_columns = ['layer_name','dace_median','cudnn_median']
 summary = []
 
@@ -200,9 +197,8 @@ libcudnn.cudnnDestroyTensorDescriptor(in_desc)
 libcudnn.cudnnDestroyTensorDescriptor(out_desc)
 libcudnn.cudnnDestroyFilterDescriptor(filt_desc)
 
-
 for layern in range(currlayer, lastlayer):
-    d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern])
+    d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize = prepareinputs(convparams.iloc[layern], 'NCDHW', kdim)
     layersummary = {}
     t_input = d_input.clone()
     t_kernel = d_kernel.clone()
@@ -266,15 +262,15 @@ for layern in range(currlayer, lastlayer):
 
     # Profiling pytorch using run
     if runtorch:
-        run_fun(run_torch)
+        run_fun(run_torch, warmupiter, totaliter)
 
     # Profiling optimized dace using run
     if runoptimdace:
-        run_fun(run_optim_dace)
+        run_fun(run_optim_dace, warmupiter, totaliter)
 
     # Profiling optimized dace using run
     if runcudnn:
-        run_fun(run_cudnn)
+        run_fun(run_cudnn, warmupiter, totaliter)
 
     # Comparitive profiling using time funcs
     print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
@@ -283,26 +279,23 @@ for layern in range(currlayer, lastlayer):
     torch_median = []
     cudnn_median = []
     if compareprof:
-        times = time_funcs([run_optim_dace, run_torch, run_cudnn],
-                        func_names=["dace", "pytorch", "cudnn"],
+        times = time_funcs([run_optim_dace, run_cudnn],
+                        func_names=["dace", "cudnn"],
                         warmups=warmupiter,
                         num_iters=totaliter,
                         launch_wait=setlaunchwait)
-        print_time_statistics(times, [ "dace", "pytorch", "cudnn"])
+        print_time_statistics(times, [ "dace", "cudnn"])
         layersummary['layer_name'] = layer_name
         layersummary['times'] = times
         layersummary['dace_median'] = statistics.median(times[0])
-        layersummary['torch_median'] = statistics.median(times[1])
+        layersummary['cudnn_median'] = statistics.median(times[1])
         median_dace.append(statistics.median(times[0]))
-        median_torch.append(statistics.median(times[1]))
-        median_cudnn.append(statistics.median(times[2]))
+        median_cudnn.append(statistics.median(times[1]))
         dace_median.append(times[0])
-        torch_median.append(times[1])
-        cudnn_median.append(times[2])
+        cudnn_median.append(times[1])
         summary.append(layersummary)
 
     dace_median_array = np.array(dace_median)
-    torch_median_array = np.array(torch_median)
     cudnn_median_array = np.array(cudnn_median)
 
     # run using prof for torch
@@ -335,100 +328,8 @@ for layern in range(currlayer, lastlayer):
     libcudnn.cudnnDestroyTensorDescriptor(out_desc)
     libcudnn.cudnnDestroyFilterDescriptor(filt_desc)
 
-#TODO: create summary csv with all values mean median mode
-def addlabels(x,y):
-    for i in range(len(x)):
-        y[i] =round(y[i],2)
-        plt.text(i,y[i],y[i])
-
-csv_data = deepcopy(summary)
-csv_file = f'{outdir}/summary.csv'
-with open(csv_file, 'w') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-    writer.writeheader()
-    for data in csv_data:
-        del data['times']
-        writer.writerow(data)
-
-nrow = 2
-ncol = lastlayer-currlayer
-row = 0
-col = 0
-fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True, sharex=True)
-full_df = pd.DataFrame(columns = ['layer_name','fun_name','times'])
-if enableplots:
-    layern = 0
-    for layersummary in summary:
-        times = layersummary["times"]
-        layer_name = layersummary["layer_name"]
-        d = {'pytorch': pd.Series(times[1]), 'dace': pd.Series(times[0])}
-        df = pd.DataFrame(d)
-        if (col==ncol):
-            row = row+1
-            col = 0
-        if (row==nrow):
-            print("WARNING: Some plots could not be generated")
-            exit()
-        axtorch = sns.violinplot(ax = axes[0, col], y=df["pytorch"], cut=0, color = 'pink')
-        axtorch.set(xlabel=f'{paramscsv}layer{layern}', ylabel='pytorch runtime in ms')
-        axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'skyblue')
-        axd.set( ylabel=f'dace runtime in ms', xlabel=  f'{paramscsv}layer{layern}')
-        layern = layern+1
-        col = col+1
-
-        layer_name_column = [f'layer{layern}']*totaliter
-        fun_name_column = ['dace']*totaliter
-        data_dace = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[0]}
-        df_dace = pd.DataFrame(data_dace)
-        layer_name_column = [f'layer{layern}']*totaliter
-        fun_name_column = ['pytorch']*totaliter
-        data_torch = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[1]}
-        df_torch = pd.DataFrame(data_torch)
-        
-        full_df = pd.concat([full_df, df_torch, df_dace], ignore_index=True)
-
-
-    figurename = f'{outdir}/separate_runtime.png'
-    fig.savefig(figurename)
-    plt.cla()
-    plt.clf()
-
-    #sns.set(style="darkgrid")
-    full_df[["times"]] = full_df[["times"]].apply(pd.to_numeric)
-    # Grouped violinplot
-    ax = sns.violinplot(x="layer_name", y="times", hue="fun_name", data=full_df, palette="Pastel1", cut=0, scale='width', inner='quartile',split=True)
-    ax.set(ylabel='Runtime in ms')
-    ax.set(xlabel=f'Variation across {paramscsv} layers for warmup iterations {warmupiter} and total iterations {totaliter}')
-    fig = ax.get_figure()
-    figurename = f'{outdir}/violin_allruntime.png'
-    plt.savefig(figurename)
-    
-    plt.cla()
-    plt.clf()
-    if len(median_dace) != 0 and len(median_torch) !=0:
-        print("INFO: Plotting summary graph")
-        # set width of bar
-        barWidth = 0.2
-        fig = plt.subplots(figsize =(12, 8))
-        # Set position of bar on X axis
-        br1 = np.arange(len(median_torch))
-        br2 = [x + barWidth for x in br1]
-        
-        # Make the plot
-        plt.bar(br1, median_torch, color ='pink', width = barWidth, edgecolor ='grey', label ='pytorch')
-        plt.bar(br2, median_dace, color ='skyblue', width = barWidth, edgecolor ='grey', label ='dace')
-        addlabels(br1, median_torch)
-        addlabels(br2, median_dace)
-        # Adding Xticks
-        plt.xlabel('Variation across different layers', fontweight ='bold', fontsize = 15)
-        plt.ylabel('Median runtime in ms', fontweight ='bold', fontsize = 15)
-        plt.xticks([r + barWidth for r in range(len(median_dace))], layer_names)
-        plt.legend()
-        plt.xticks(rotation=45, ha='right')
-        plt.savefig(f'{outdir}/median_runtime', bbox_inches='tight')
-
-    elif len(median_dace)!=0 or len(median_torch)!=0:
-        print("INFO: Plot single function graph")
+createsummaryfile(summary, outdir, csv_columns)
+createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary)
 
 # cudnn clear context
 libcudnn.cudnnDestroyConvolutionDescriptor(conv_desc)
