@@ -107,16 +107,12 @@ def prepareinputs(currconv, layout):
     outdepth = indepth - kdim + 1
     outheight = inheight - kdim + 1
     outwidth = inheight - kdim + 1
-    batchsize = 4
+    batchsize = 16 # Maximum experimentally runnable batch size is 16. Theoretical is 64.
     if layout == 'NCDHW':
         # Prepare data with pytorch
         Input = torch.rand(batchsize, inchannels, indepth, inheight, inwidth).cuda()
         kernel = torch.rand(outchannels, inchannels, kdim, kdim, kdim).cuda()
         Output = torch.zeros(batchsize, outchannels, outdepth, outheight, outwidth).cuda()
-        #import torch.nn.functional as F
-        #Output = F.conv3d(Input, kernel, stride=1, padding='valid')
-
-        #exit()
         print(f'\n***** \n***** \n Parsed 3D Convolution Input parameters {inchannels}x{indepth}x{inheight}x{inwidth} '
                 f'and Kernel parameters {outchannels}x{inchannels}x{kdim}x{kdim}x{kdim}')
     elif layout == 'NDHWC':
