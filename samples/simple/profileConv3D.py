@@ -63,8 +63,8 @@ lastlayer = min(args.lastlayer, convparams.shape[0])
 torch.cuda.empty_cache()
 
 # Make this as a choice depending on the kind of experiment you run
-#selectMethod = 'directConvdace'
-selectMethod = 'implicitGemmdace'
+selectMethod = 'directConvdace'
+#selectMethod = 'implicitGemmdace'
 
 if selectMethod == 'directConvdace':
     from directConvdace import *
@@ -172,7 +172,7 @@ for layern in range(currlayer, lastlayer):
         diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
         print('Difference between cudnn and dace values:', diff)
 
-        if(diff<=1e-3): #TODO: Check if the threshold should be reduced
+        if(diff<=1e-4): #TODO: Check if the threshold should be reduced
             print(f"Verification successfull")
         else:
             sys.exit("!!! ERROR: Incorrect verification")
