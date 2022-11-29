@@ -20,7 +20,7 @@ kdim = 3
 outdepth = indepth - kdim + 1
 outheight = inheight - kdim + 1
 outwidth = inheight - kdim + 1
-batchsize = 1
+batchsize = 2
 pad = 0
 stride = 1
 dil = 1
@@ -40,26 +40,28 @@ outwidth = np.int32(outwidth)
 conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
 
 # Iteratively tiling the implicit gemm formulation
-
+# Tiles of size NTile by OutTile by OCTile
+# Merge d, h, w indexing to just 1 loop ? 
+blockN = 2
+blockDHW = 64
+blockOC = 8
 
 # Iteratiively tile direct convolution
 def direct_conv3d(direct_input, direct_kernel, direct_output):
+    DHW = outdepth*outheight*outwidth
+    HW = outheight*outwidth
     for n in range(0, batchsize): # Must go to different blocks, less data sharing
-
-        for d in range(0, outdepth):
-            for h in range(0, outheight):
-                for w in range(0, outwidth):
-        
-                    for oc in range(0, outchannels): # Must go to different blocks, less data sharing
-
-                        # Compulsory serial code starts
-                        for ic in range(0, inchannels): # all must go to the same block, but too much for a single thread
-
-                            # Don't divide this between threads
-                            for kd in range(0, kdim):
-                                for kh in range(0, kdim):
-                                    for kw in range(0, kdim):
-                                            direct_output[n, d, h, w, oc] = direct_output[n, d, h, w, oc] + direct_input[ n, d+kd, h+kh, w+kw, ic]*direct_kernel[oc, kd, kh, kw, ic]
+        for dhw in range(0, DHW):        
+            for oc in range(0, outchannels): # Must go to different blocks, less data sharing
+                d, dhw_residual = divmod(dhw, HW)
+                h, w = divmod(dhw_residual, outheight)
+                # Compulsory serial code starts
+                for ic in range(0, inchannels): # all must go to the same block, but too much for a single thread
+                    # Don't divide this between threads. Per thread it can compute atleast this
+                    for kd in range(0, kdim):
+                        for kh in range(0, kdim):
+                            for kw in range(0, kdim):
+                                    direct_output[n, d, h, w, oc] = direct_output[n, d, h, w, oc] + direct_input[ n, d+kd, h+kh, w+kw, ic]*direct_kernel[oc, kd, kh, kw, ic]
 
 layout = 'NDHWC'
 direct_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
