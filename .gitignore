@@ -13,6 +13,7 @@ samples/simple/profileresults/
 samples/simple/outputplots/
 samples/simple/pytorch/
 .soap/
+cutlass/
 
 # Distribution / packaging
 .Python
