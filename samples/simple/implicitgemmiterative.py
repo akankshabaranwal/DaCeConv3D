@@ -36,9 +36,14 @@ outwidth = np.int32(outwidth)
 conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
 
 # Iteratively tiling the implicit gemm formulation
-Mtile = 4
-Ntile = 4
-Ktile = 4
+CTAtileM = 4
+CTAtileN = 4
+CTAtileK = 4
+
+WARPtileM = 2
+WARPtileN = 2
+WARPtileK = 2
+
 def implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
     tmp_dhw = outdepth*outheight*outwidth
     tmp_hw = outheight*outwidth
@@ -48,27 +53,31 @@ def implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
     GEMM_N = outchannels
     GEMM_K = inchannels * kdim * kdim * kdim
 
-    # Tiling in Mtile X Mtile X Ktile block
-    for mb in range(0, GEMM_M, Mtile):
-        for nb in range(0, GEMM_N, Ntile):
-            for kb in range(0, GEMM_K, Ktile):
-                for gemm_k in range(0, Ktile):
-                    for gemm_i in range(0, Mtile):
-                        for gemm_j in range(0,Ntile):
-                            n, nopq_residual = divmod(gemm_i+mb, tmp_dhw)
-                            o, opq_residual = divmod(nopq_residual, tmp_hw)
-                            p, q = divmod(opq_residual, outwidth)
-                            
-                            c, ctrs_residual = divmod(gemm_k+kb, tmp_kdim3)
-                            t, trs_residual = divmod(ctrs_residual, tmp_kdim2)
-                            r, s = divmod(trs_residual, kdim)
-                            d = o + t
-                            h = p + r
-                            w = q + s
-                            imgemm_output[ n, o, p, q, gemm_j+nb]  = imgemm_output[ n, o, p, q, gemm_j+nb] + imgemm_input[n, d, h, w, c]*imgemm_kernel[gemm_j+nb, t, r, s, c]
+    # 2 levels of tiling
+    for cta_n in range(0, GEMM_N, CTAtileN): # Work division between blocks
+        for cta_m in range(0, GEMM_M, CTAtileM):
+            for cta_k in range(0, GEMM_K, CTAtileK):
+                
+                for warp_n in range(0, CTAtileN, WARPtileN): # Work division between threads, per block computation
+                    for warp_m in range(0, CTAtileM, WARPtileM): 
+                        for warp_k in range(0, CTAtileK, WARPtileK):
+
+                            for gemm_k in range(0, WARPtileK): # Work per thread
+                                for gemm_i in range(0, WARPtileM):
+                                    for gemm_j in range(0, WARPtileN):
+                                        n, nopq_residual = divmod(gemm_i+cta_m+warp_m, tmp_dhw)
+                                        o, opq_residual = divmod(nopq_residual, tmp_hw)
+                                        p, q = divmod(opq_residual, outwidth)
+                                        
+                                        c, ctrs_residual = divmod(gemm_k+cta_k+warp_k, tmp_kdim3)
+                                        t, trs_residual = divmod(ctrs_residual, tmp_kdim2)
+                                        r, s = divmod(trs_residual, kdim)
+                                        d = o + t
+                                        h = p + r
+                                        w = q + s
+                                        imgemm_output[ n, o, p, q, gemm_j+cta_n+warp_n]  = imgemm_output[ n, o, p, q, gemm_j+cta_n+warp_n] + imgemm_input[n, d, h, w, c]*imgemm_kernel[gemm_j+cta_n+warp_n, t, r, s, c]
 
 layout = 'NDHWC'
-
 imgemm_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
 imgemm_kernel = torch.rand(outchannels, kdim, kdim, kdim, inchannels).cuda()
 imgemm_output = torch.zeros(batchsize, outdepth, outheight, outwidth, outchannels).cuda()
