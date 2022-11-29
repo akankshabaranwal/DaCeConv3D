@@ -44,7 +44,7 @@ WARPtileM = 2
 WARPtileN = 2
 WARPtileK = 2
 
-def implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
+def tiled_implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
     tmp_dhw = outdepth*outheight*outwidth
     tmp_hw = outheight*outwidth
     tmp_kdim3 = kdim*kdim*kdim
@@ -86,7 +86,7 @@ cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, 
 libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_desc, filt_data, 
                             conv_desc, convolution_algo, ws_data, ws_size.value, 
                             beta, out_desc, out_data)
-implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
+tiled_implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
 
 imgemm_output_g = gpuarray.to_gpu(imgemm_output.cpu().numpy().astype(np.float32))
 diff = np.linalg.norm((imgemm_output_g - out_data_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
