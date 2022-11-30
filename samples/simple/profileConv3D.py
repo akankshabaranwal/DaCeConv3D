@@ -62,20 +62,22 @@ lastlayer = min(args.lastlayer, convparams.shape[0])
 
 torch.cuda.empty_cache()
 
-# Select the implementation to run
-selectMethod = 'directConvdace'
-#selectMethod = 'directConvdaceNDHWC'
-#selectMethod = 'implicitGemmdace'
+# Select the dace implementation to run
+#selectMethod = 'directConvNCDHWdace'
+#selectMethod = 'directConvNDHWCdace'
+selectMethod = 'implicitGemmdace'
 
-if selectMethod == 'directConvdace':
+if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvdaceNDHWC':
+elif selectMethod == 'directConvNDHWCdace':
     from directConvNDHWCdace import *
     layout = 'NDHWC'
-else:
+elif selectMethod == 'implicitGemmdace':
     from implicitGemmdace import *
     layout = 'NDHWC'
+else:
+    sys.exit("!!ERROR: Select valid dace implementation")
 
 outdir = f'./outputplots/{selectMethod}_out'
 #outdir = f'./outputplots/out{math.floor(time.time())}'
