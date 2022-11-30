@@ -55,6 +55,12 @@ CTAtile_DHW_IC = CTAtile_DHW*inchannels
 
 # Tiling direct convolution
 def direct_conv3d(direct_input, direct_kernel, direct_output):
+    # Hint:
+    # dace.ndarray([], dace.float32, storage=dace.StorageType.)
+    # for cta_n, dhw, oc in dace.map[0:batchsize:CTAtile_N, ...] @ dace.ScheduleType.GPU_Device:
+    #  Whatever you allocate here goes to the shared memory
+    #     for warp_n, woc, ... in dace.map[0:CTAtile_N] @ dace.ScheduleType.GPU_ThreadBlock:
+    #       Whatever you allocate here goes to the register memory
 
     for cta_n in range(0, batchsize, CTAtile_N):
         for cta_dhw in range(0, DHW, CTAtile_DHW):

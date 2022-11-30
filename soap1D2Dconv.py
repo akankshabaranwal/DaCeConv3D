@@ -2,6 +2,7 @@ import numpy as np
 from dace import dtypes
 import torch
 from soaptest import soap_analysis
+import dace
 
 d_outdepth = dace.symbol('d_outdepth')
 d_outheight = dace.symbol('d_outheight')

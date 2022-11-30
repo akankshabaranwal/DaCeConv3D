@@ -64,8 +64,8 @@ torch.cuda.empty_cache()
 
 # Select the dace implementation to run
 #selectMethod = 'directConvNCDHWdace'
-#selectMethod = 'directConvNDHWCdace'
-selectMethod = 'implicitGemmdace'
+selectMethod = 'directConvNDHWCdace'
+#selectMethod = 'implicitGemmdace'
 
 if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
