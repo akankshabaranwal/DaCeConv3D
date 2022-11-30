@@ -62,13 +62,17 @@ lastlayer = min(args.lastlayer, convparams.shape[0])
 
 torch.cuda.empty_cache()
 
-# Make this as a choice depending on the kind of experiment you run
+# Select the implementation to run
 selectMethod = 'directConvdace'
+#selectMethod = 'directConvdaceNDHWC'
 #selectMethod = 'implicitGemmdace'
 
 if selectMethod == 'directConvdace':
-    from directConvdace import *
+    from directConvNCDHWdace import *
     layout = 'NCDHW'
+elif selectMethod == 'directConvdaceNDHWC':
+    from directConvNDHWCdace import *
+    layout = 'NDHWC'
 else:
     from implicitGemmdace import *
     layout = 'NDHWC'
