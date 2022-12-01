@@ -16,7 +16,6 @@ import dace
 import torch
 import torch.nn.functional as F
 
-
 from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 import pandas as pd 
 
@@ -64,8 +63,8 @@ torch.cuda.empty_cache()
 
 # Select the dace implementation to run
 #selectMethod = 'directConvNCDHWdace'
-selectMethod = 'directConvNDHWCdace'
-#selectMethod = 'implicitGemmdace'
+#selectMethod = 'directConvNDHWCdace'
+selectMethod = 'implicitGemmdace'
 
 if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *

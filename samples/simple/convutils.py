@@ -96,6 +96,8 @@ def parsecsv(csv):
     # Reset index to iterate through each 2D convolution parameter from the csv file
     convparams = convparams.reset_index()
     return convparams
+
+
 # Data layout is NCDHW for pytorch
 def prepareinputs(currconv, layout):
     inchannels = currconv["InChannel"]
@@ -107,7 +109,7 @@ def prepareinputs(currconv, layout):
     outdepth = indepth - kdim + 1
     outheight = inheight - kdim + 1
     outwidth = inheight - kdim + 1
-    batchsize = 2 # Maximum experimentally runnable batch size is 16. Theoretical is 64.
+    batchsize = 4 # Maximum experimentally runnable batch size is 16. Theoretical is 64.
     if layout == 'NCDHW':
         # Prepare data with pytorch
         Input = torch.rand(batchsize, inchannels, indepth, inheight, inwidth).cuda()

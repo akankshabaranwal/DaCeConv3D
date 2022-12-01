@@ -2,7 +2,7 @@ import dace
 import numpy as np
 from dace import dtypes
 from dace.transformation.interstate import StateFusion
-from dace.transformation.dataflow import TaskletFusion
+from dace.transformation.dataflow import TaskletFusion, MapReduceFusion
 
 # Define symbolic sizes for arbitrary inputs
 d_outdepth = dace.symbol('d_outdepth')
@@ -13,6 +13,10 @@ d_inchannels = dace.symbol('d_inchannels')
 d_outchannels = dace.symbol('d_outchannels')
 d_batchsize = dace.symbol('d_batchsize')
 
+d_GEMM_M = dace.symbol('d_GEMM_M')
+d_GEMM_N = dace.symbol('d_GEMM_N')
+d_GEMM_K = dace.symbol('d_GEMM_K')
+
 # Define data type to use
 dtype = dace.float32
 np_dtype = np.float32
@@ -22,26 +26,25 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
     # Apply GPU transformation
-    sdfg.apply_transformations_repeated(StateFusion)
-    sdfg.simplify()
+    sdfg.apply_transformations_repeated(MapReduceFusion)
     sdfg.apply_gpu_transformations()
     #sdfg.apply_transformations_repeated(TaskletFusion)
     return
 
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
-def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
+def dace_conv3d_baseline(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
                 Output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):
     
-    GEMM_M = (d_batchsize*d_outdepth*d_outheight*d_outwidth)
-    GEMM_N = d_outchannels
-    GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
+    d_GEMM_M = (d_batchsize*d_outdepth*d_outheight*d_outwidth)
+    d_GEMM_N = d_outchannels
+    d_GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
     DHW = d_outdepth*d_outheight*d_outwidth
     HW = d_outheight*d_outwidth
     kdim3 = d_kdim*d_kdim*d_kdim
     kdim2 = d_kdim*d_kdim
 
-    for gemm_i, gemm_j in dace.map[0:GEMM_M, 0:GEMM_N]:
+    for gemm_i, gemm_j in dace.map[0:d_GEMM_M, 0:d_GEMM_N]:
         n = dace.int32(gemm_i/DHW)
         nopq_residual = dace.int32(gemm_i % DHW)
 
@@ -52,7 +55,7 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
         
         accum = np.zeros([1], dtype=Input.dtype)
         
-        for gemm_k in dace.map[0: GEMM_K]:
+        for gemm_k in dace.map[0: d_GEMM_K]:
             c = dace.int32(gemm_k/kdim3)
             ctrs_residual = dace.int32(gemm_k%kdim3)
 
@@ -69,12 +72,50 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
             accum = accum + Input[n, d, h, w, c]*kernel[gemm_j, t, r, s, c]
 
         Output[ n, o, p, q, gemm_j] = accum
+    
 
 
-CTATileM = 16
-CTATileN = 16
-CTATileK = 16
+CTAtileM = 4
+CTAtileN = 4
+CTAtileK = 4
 
-WARPtileM = 4
-WARPtileN = 4
-WARPtileK = 4
+WARPtileM = 2
+WARPtileN = 2
+WARPtileK = 2
+
+# Tile based on matrix multiplication code
+@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
+def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
+                kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
+                Output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):
+    
+    d_GEMM_M = (d_batchsize*d_outdepth*d_outheight*d_outwidth)
+    d_GEMM_N = d_outchannels
+    d_GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
+    DHW = d_outdepth*d_outheight*d_outwidth
+    HW = d_outheight*d_outwidth
+    kdim3 = d_kdim*d_kdim*d_kdim
+    kdim2 = d_kdim*d_kdim
+
+    tmp_splitk = np.ndarray([d_batchsize*d_outdepth*d_outheight*d_outwidth, d_outchannels, d_inchannels * d_kdim * d_kdim * d_kdim], dtype=Input.dtype)
+
+    for gemm_i, gemm_j, gemm_k in dace.map[0:d_GEMM_M, 0:d_GEMM_N, 0:d_GEMM_K]:
+        n, nopq_residual = dace.int32(gemm_i/DHW), dace.int32(gemm_i % DHW)
+        o, opq_residual = dace.int32(nopq_residual/HW), dace.int32(nopq_residual%HW)
+        p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+
+        c, ctrs_residual = dace.int32(gemm_k/kdim3), dace.int32(gemm_k%kdim3)
+        t, trs_residual = dace.int32(ctrs_residual/kdim2), dace.int32(ctrs_residual%kdim2)
+        r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
+
+        d, h, w = (o + t), (p + r), (q + s)
+
+        tmp_splitk[gemm_i, gemm_j, gemm_k] = Input[n, d, h, w, c]*kernel[gemm_j, t, r, s, c]
+
+    tmp_reducedk = np.ndarray([d_batchsize*d_outdepth*d_outheight*d_outwidth, d_outchannels], dtype=Input.dtype)
+    dace.reduce(lambda a, b: a + b, tmp_splitk, tmp_reducedk, axis=2, identity=0)
+    for gemm_i, gemm_j in dace.map[0:d_GEMM_M, 0:d_GEMM_N]:
+        n, nopq_residual = dace.int32(gemm_i/DHW), dace.int32(gemm_i % DHW)
+        o, opq_residual = dace.int32(nopq_residual/HW), dace.int32(nopq_residual%HW)
+        p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+        Output[ n, o, p, q, gemm_j] = tmp_reducedk[gemm_i, gemm_j]
