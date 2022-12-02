@@ -84,7 +84,7 @@ WARPtileN = 2
 WARPtileK = 2
 
 # Tile based on matrix multiplication code
-@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
+@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
 def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
                 Output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):

@@ -52,12 +52,12 @@ def onlytiled_implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
     GEMM_M = batchsize * outdepth * outheight * outwidth
     GEMM_N = outchannels
     GEMM_K = inchannels * kdim * kdim * kdim
+
     # 2 levels of tiling
     for cta_n in range(0, GEMM_N, CTAtileN): # Work division between blocks
         for cta_m in range(0, GEMM_M, CTAtileM):            
             for cta_k in range(0, GEMM_K, CTAtileK):
 
-                cta_output_buffer = torch.zeros(CTAtileN, CTAtileM, CTAtileK).cuda()
                 for warp_n in range(cta_n, CTAtileN+cta_n, WARPtileN): # Work division between threads, per block computation
                     for warp_m in range(cta_m, CTAtileM+cta_m, WARPtileM): 
                         for warp_k in range(cta_k, CTAtileK+cta_k, WARPtileK):
@@ -97,31 +97,35 @@ def tiled_implicit_gemm_conv3d(Input, kernel, Output):
     GEMM_N = outchannels
     GEMM_K = inchannels * kdim * kdim * kdim
     
-    tmp_splitk = torch.zeros( GEMM_M, GEMM_N, GEMM_K).cuda()
-    for gemm_i in range(0, GEMM_M):
-        for gemm_j in range(0, GEMM_N):
-            for gemm_k in range(0, GEMM_K):
-                n = dace.int32(gemm_i/DHW)
-                nopq_residual = dace.int32(gemm_i % DHW)
-                o = dace.int32(nopq_residual/HW)
-                opq_residual = dace.int32(nopq_residual%HW)        
-                p = dace.int32(opq_residual/outwidth)
-                q = dace.int32(opq_residual%outwidth)
+    OutputMatrix = torch.zeros(GEMM_M, GEMM_N).cuda()
+    for cta_m in range(0, GEMM_M, CTAtileM):
+        for cta_n in range(0, GEMM_N, CTAtileN):
+            tmp_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
+            for cta_k in range(0, GEMM_K, CTAtileK):
+                tmp_splitk = torch.zeros(CTAtileM, CTAtileN).cuda()
+                for gemm_k in range(0, CTAtileK):
+                    for gemm_m in range(0, CTAtileM):
+                        for gemm_n in range(0, CTAtileN):
+                                n = dace.int32((gemm_m+cta_m)/DHW)
+                                nopq_residual = dace.int32((gemm_m+cta_m) % DHW)
+                                o = dace.int32(nopq_residual/HW)
+                                opq_residual = dace.int32(nopq_residual%HW)        
+                                p = dace.int32(opq_residual/outwidth)
+                                q = dace.int32(opq_residual%outwidth)
 
-                c = dace.int32(gemm_k/kdim3)
-                ctrs_residual = dace.int32(gemm_k%kdim3)
-                t = dace.int32(ctrs_residual/kdim2)
-                trs_residual = dace.int32(ctrs_residual%kdim2)
-                r = dace.int32(trs_residual/kdim)
-                s = dace.int32(trs_residual%kdim)
+                                c = dace.int32((gemm_k+cta_k)/kdim3)
+                                ctrs_residual = dace.int32((gemm_k+cta_k)%kdim3)
+                                t = dace.int32(ctrs_residual/kdim2)
+                                trs_residual = dace.int32(ctrs_residual%kdim2)
+                                r = dace.int32(trs_residual/kdim)
+                                s = dace.int32(trs_residual%kdim)
 
-                d = o + t
-                h = p + r
-                w = q + s
-
-                tmp_splitk[gemm_i, gemm_j, gemm_k] = Input[n, d, h, w, c]*kernel[gemm_j, t, r, s, c]
-
-    tmp_reducedk = torch.sum(tmp_splitk, 2)
+                                d = o + t
+                                h = p + r
+                                w = q + s
+                                tmp_splitk[gemm_m, gemm_n] = Input[n, d, h, w, c]*kernel[gemm_n+cta_n, t, r, s, c]
+                    tmp_reducedk += tmp_splitk
+            OutputMatrix[cta_m:cta_m+CTAtileM, cta_n:cta_n+CTAtileN] = tmp_reducedk
 
     for gemm_i in range(0, GEMM_M):
         for gemm_j in range(0, GEMM_N):
@@ -131,7 +135,7 @@ def tiled_implicit_gemm_conv3d(Input, kernel, Output):
             opq_residual = dace.int32(nopq_residual%HW)        
             p = dace.int32(opq_residual/outwidth)
             q = dace.int32(opq_residual%outwidth)
-            Output[ n, o, p, q, gemm_j] = tmp_reducedk[gemm_i, gemm_j]
+            Output[ n, o, p, q, gemm_j] = OutputMatrix[gemm_i, gemm_j]
 
 
 '''  

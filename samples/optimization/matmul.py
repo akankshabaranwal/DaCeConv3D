@@ -141,6 +141,7 @@ def optimize_for_gpu(sdfg: dace.SDFG, m: int, n: int, k: int):
     # Apply GPU transformation
     sdfg.apply_gpu_transformations()
 
+    return
     # Find multiplication map
     entry = find_map_by_param(sdfg, 'k')
 
