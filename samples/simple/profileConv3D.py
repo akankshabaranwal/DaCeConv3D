@@ -173,7 +173,10 @@ for layern in range(currlayer, lastlayer):
         run_cudnn()
         run_optim_dace()
         d_output = d_output.cpu()
-        dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))                                    
+        dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
+        #print(d_output)
+        #print("::::::::::::::::::\n\n\n\n:::::::::::")
+        #print(out_data_g.get())                                    
         diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
         print('Difference between cudnn and dace values:', diff)
 
