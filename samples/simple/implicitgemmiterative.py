@@ -97,7 +97,6 @@ def tiled_implicit_gemm_conv3d(Input, kernel, Output):
     GEMM_N = outchannels
     GEMM_K = inchannels * kdim * kdim * kdim
     
-    OutputMatrix = torch.zeros(GEMM_M, GEMM_N).cuda()
     for cta_n in range(0, GEMM_N, CTAtileN):
         for cta_m in range(0, GEMM_M, CTAtileM):
             cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
@@ -136,18 +135,18 @@ def tiled_implicit_gemm_conv3d(Input, kernel, Output):
                                 warp_reducedk += warp_splitk
                         cta_splitk[warp_m:warp_m+WARPtileM, warp_n:warp_n+WARPtileN] = warp_reducedk
                 cta_reducedk += cta_splitk
-            OutputMatrix[cta_m:cta_m+CTAtileM, cta_n:cta_n+CTAtileN] = cta_reducedk
-    
-    for gemm_i in range(0, GEMM_M):
-        for gemm_j in range(0, GEMM_N):
-            n = dace.int32(gemm_i/DHW)
-            nopq_residual = dace.int32(gemm_i % DHW)
-            o = dace.int32(nopq_residual/HW)
-            opq_residual = dace.int32(nopq_residual%HW)        
-            p = dace.int32(opq_residual/outwidth)
-            q = dace.int32(opq_residual%outwidth)
-            Output[ n, o, p, q, gemm_j] = OutputMatrix[gemm_i, gemm_j]
 
+            for assignM in range(0, CTAtileM):
+                for assignN in range(0, CTAtileN):
+                    n = dace.int32((cta_m+assignM)/DHW)
+                    nopq_residual = dace.int32((cta_m+assignM) % DHW)
+                    o = dace.int32(nopq_residual/HW)
+                    opq_residual = dace.int32(nopq_residual%HW)        
+                    p = dace.int32(opq_residual/outwidth)
+                    q = dace.int32(opq_residual%outwidth)
+                    Output[ n, o, p, q, cta_n+assignN] = cta_reducedk[assignM, assignN]
+                
+    
 
 '''  
     for cta_n in range(0, GEMM_N, CTAtileN): # Work division between blocks

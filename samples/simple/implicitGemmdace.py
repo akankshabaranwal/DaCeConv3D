@@ -85,7 +85,7 @@ WARPtileK = 2
 
 # Tile based on matrix multiplication code
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
-def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
+def dace_conv3d_bad(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
                 Output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):
     
@@ -119,3 +119,5 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
         o, opq_residual = dace.int32(nopq_residual/HW), dace.int32(nopq_residual%HW)
         p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
         Output[ n, o, p, q, gemm_j] = tmp_reducedk[gemm_i, gemm_j]
+
+
