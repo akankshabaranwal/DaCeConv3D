@@ -98,35 +98,46 @@ def tiled_implicit_gemm_conv3d(Input, kernel, Output):
     GEMM_K = inchannels * kdim * kdim * kdim
     
     OutputMatrix = torch.zeros(GEMM_M, GEMM_N).cuda()
-    for cta_m in range(0, GEMM_M, CTAtileM):
-        for cta_n in range(0, GEMM_N, CTAtileN):
-            tmp_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
+    for cta_n in range(0, GEMM_N, CTAtileN):
+        for cta_m in range(0, GEMM_M, CTAtileM):
+            cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
             for cta_k in range(0, GEMM_K, CTAtileK):
-                tmp_splitk = torch.zeros(CTAtileM, CTAtileN).cuda()
-                for gemm_k in range(0, CTAtileK):
-                    for gemm_m in range(0, CTAtileM):
-                        for gemm_n in range(0, CTAtileN):
-                                n = dace.int32((gemm_m+cta_m)/DHW)
-                                nopq_residual = dace.int32((gemm_m+cta_m) % DHW)
-                                o = dace.int32(nopq_residual/HW)
-                                opq_residual = dace.int32(nopq_residual%HW)        
-                                p = dace.int32(opq_residual/outwidth)
-                                q = dace.int32(opq_residual%outwidth)
+                cta_splitk = torch.zeros(CTAtileM, CTAtileN).cuda()
 
-                                c = dace.int32((gemm_k+cta_k)/kdim3)
-                                ctrs_residual = dace.int32((gemm_k+cta_k)%kdim3)
-                                t = dace.int32(ctrs_residual/kdim2)
-                                trs_residual = dace.int32(ctrs_residual%kdim2)
-                                r = dace.int32(trs_residual/kdim)
-                                s = dace.int32(trs_residual%kdim)
+                for warp_n in range(0, CTAtileN, WARPtileN):
+                    for warp_m in range(0, CTAtileM, WARPtileM):
+                        warp_reducedk = torch.zeros(WARPtileM, WARPtileN).cuda()
+                        for warp_k in range(0, CTAtileK, WARPtileK):
+                            warp_splitk = torch.zeros(WARPtileM, WARPtileN).cuda()                          
+                            
+                            for gemm_k in range(0, WARPtileK):
+                                for gemm_m in range(0, WARPtileM):
+                                    for gemm_n in range(0, WARPtileN):
 
-                                d = o + t
-                                h = p + r
-                                w = q + s
-                                tmp_splitk[gemm_m, gemm_n] = Input[n, d, h, w, c]*kernel[gemm_n+cta_n, t, r, s, c]
-                    tmp_reducedk += tmp_splitk
-            OutputMatrix[cta_m:cta_m+CTAtileM, cta_n:cta_n+CTAtileN] = tmp_reducedk
+                                            n = dace.int32((gemm_m+cta_m+warp_m)/DHW)
+                                            nopq_residual = dace.int32((gemm_m+cta_m+warp_m) % DHW)
+                                            o = dace.int32(nopq_residual/HW)
+                                            opq_residual = dace.int32(nopq_residual%HW)        
+                                            p = dace.int32(opq_residual/outwidth)
+                                            q = dace.int32(opq_residual%outwidth)
 
+                                            c = dace.int32((gemm_k+cta_k+warp_k)/kdim3)
+                                            ctrs_residual = dace.int32((gemm_k+cta_k+warp_k)%kdim3)
+                                            t = dace.int32(ctrs_residual/kdim2)
+                                            trs_residual = dace.int32(ctrs_residual%kdim2)
+                                            r = dace.int32(trs_residual/kdim)
+                                            s = dace.int32(trs_residual%kdim)
+
+                                            d = o + t
+                                            h = p + r
+                                            w = q + s
+
+                                            warp_splitk[gemm_m, gemm_n] = Input[n, d, h, w, c]*kernel[gemm_n+cta_n+warp_n, t, r, s, c]
+                                warp_reducedk += warp_splitk
+                        cta_splitk[warp_m:warp_m+WARPtileM, warp_n:warp_n+WARPtileN] = warp_reducedk
+                cta_reducedk += cta_splitk
+            OutputMatrix[cta_m:cta_m+CTAtileM, cta_n:cta_n+CTAtileN] = cta_reducedk
+    
     for gemm_i in range(0, GEMM_M):
         for gemm_j in range(0, GEMM_N):
             n = dace.int32(gemm_i/DHW)
