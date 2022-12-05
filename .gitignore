@@ -197,6 +197,4 @@ _build/
 .DS_Store
 
 .*cache/
-
-# SOAP
-solver_cache
+/doc/source/config_schema.rst

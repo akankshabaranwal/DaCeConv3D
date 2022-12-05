@@ -78,8 +78,8 @@ setup(name='dace',
           'typing-compat; python_version < "3.8"', 'opt_einsum'
       ] + cmake_requires,
       extras_require={
-          'testing': ['coverage', 'pytest-cov', 'scipy', 'absl-py', 'pymlir', 'click'],
-          'docs': ['jinja2<3.1.0']
+          'testing': ['coverage', 'pytest-cov', 'scipy', 'absl-py', 'opt_einsum', 'pymlir', 'click'],
+          'docs': ['jinja2<3.1.0', 'sphinx-autodoc-typehints', 'sphinx-rtd-theme>=0.5.1']
       },
       entry_points={
           'console_scripts': [

@@ -19,6 +19,9 @@ d_GEMM_K = dace.symbol('d_GEMM_K')
 
 d_DHW = dace.symbol('d_DHW')
 d_HW = dace.symbol('d_HW')
+
+d_kdim3 = dace.symbol('d_kdim3')
+d_kdim2 = dace.symbol('d_kdim2')
 # Define data type to use
 dtype = dace.float32
 np_dtype = np.float32
@@ -130,6 +133,7 @@ WARPtileM = 2
 WARPtileN = 2
 WARPtileK = 2
 # Tiling and buffering
+#TODO: Check what happens if you change the kdim variables to constants instead of dace map.
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
 def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
@@ -140,10 +144,10 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
     d_GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
     d_DHW = d_outdepth*d_outheight*d_outwidth
     d_HW = d_outheight*d_outwidth
-    kdim3 = d_kdim*d_kdim*d_kdim
-    kdim2 = d_kdim*d_kdim
+    d_kdim3 = d_kdim*d_kdim*d_kdim
+    d_kdim2 = d_kdim*d_kdim
 
-    for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM] @dace.ScheduleType.GPU_Device:
+    for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM]:
             cta_reducedk = np.zeros([CTAtileM, CTAtileN], dtype=Input.dtype)
             for cta_k in dace.map[0:d_GEMM_K:CTAtileK]:
                 cta_splitk = np.zeros([CTAtileM, CTAtileN], dtype=Input.dtype)
@@ -154,7 +158,7 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                             warp_splitk = np.zeros([WARPtileM, WARPtileN], dtype=Input.dtype)
                             
                             for gemm_k in dace.map[0: WARPtileK]:
-                                for gemm_m, gemm_n in dace.map[0:WARPtileM, 0:WARPtileN] @dace.ScheduleType.GPU_ThreadBlock:
+                                for gemm_m, gemm_n in dace.map[0:WARPtileM, 0:WARPtileN]:
                                             n =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW)
                                             nopq_residual = dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
                                             o = dace.int32(nopq_residual/d_HW) 
@@ -162,10 +166,10 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                                             p = dace.int32(opq_residual/d_outwidth) 
                                             q = dace.int32(opq_residual%d_outwidth)
 
-                                            c = dace.int32((gemm_k+cta_k+warp_k)/kdim3)
-                                            ctrs_residual = dace.int32((gemm_k+cta_k+warp_k)%kdim3)
-                                            t = dace.int32(ctrs_residual/kdim2)
-                                            trs_residual = dace.int32(ctrs_residual%kdim2)
+                                            c = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3)
+                                            ctrs_residual = dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
+                                            t = dace.int32(ctrs_residual/d_kdim2)
+                                            trs_residual = dace.int32(ctrs_residual%d_kdim2)
                                             r = dace.int32(trs_residual/d_kdim) 
                                             s = dace.int32(trs_residual%d_kdim)
                                             d = o + t
