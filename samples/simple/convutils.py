@@ -109,7 +109,7 @@ def prepareinputs(currconv, layout):
     outdepth = indepth - kdim + 1
     outheight = inheight - kdim + 1
     outwidth = inheight - kdim + 1
-    batchsize = 4 # Maximum experimentally runnable batch size is 16. Theoretical is 64.
+    batchsize = 16 # Maximum experimentally runnable batch size is 16. Theoretical is 64.
     if layout == 'NCDHW':
         # Prepare data with pytorch
         Input = torch.rand(batchsize, inchannels, indepth, inheight, inwidth).cuda()

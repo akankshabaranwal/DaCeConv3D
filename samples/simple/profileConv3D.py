@@ -59,12 +59,16 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
+if (verify and compareprof):
+    sys.exit("!!! ERROR: Something pycuda context issue when both verif and compareprof are called together")
+
 torch.cuda.empty_cache()
+
 
 # Select the dace implementation to run
 #selectMethod = 'directConvNCDHWdace'
-#selectMethod = 'directConvNDHWCdace'
-selectMethod = 'implicitGemmdace'
+#selectMethod = 'directConvNDHWCdace' 
+selectMethod = 'implicitGemmdace' #Verified working with batch size 16 on GV100
 
 if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
@@ -174,9 +178,7 @@ for layern in range(currlayer, lastlayer):
         run_optim_dace()
         d_output = d_output.cpu()
         dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
-        #print(d_output)
-        #print("::::::::::::::::::\n\n\n\n:::::::::::")
-        #print(out_data_g.get())                                    
+                              
         diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
         print('Difference between cudnn and dace values:', diff)
 
