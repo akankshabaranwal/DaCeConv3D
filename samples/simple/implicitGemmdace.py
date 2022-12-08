@@ -62,7 +62,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     
     return
 
-@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True)
+@dace.program(device=dtypes.DeviceType.GPU, auto_optimize=True, regenerate_code=False)
 def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
                 Output: dtype[d_batchsize, d_outdepth, d_outheight, d_outwidth, d_outchannels] @dace.StorageType.GPU_Global):

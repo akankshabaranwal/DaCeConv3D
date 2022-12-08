@@ -61,7 +61,7 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
-batchsizes = [2]
+batchsizes = [4]
 
 if (verify and compareprof):
     sys.exit("!!! ERROR: Something pycuda context issue when both verif and compareprof are called together")
@@ -69,12 +69,7 @@ if (verify and compareprof):
 torch.cuda.empty_cache()
 
 
-# Select the dace implementation to run
-#selectMethod = 'directConvNCDHWdace'
-#selectMethod = 'directConvNDHWCdace' 
-#selectMethod = 'implicitGemmTileddace' #Verified working with batch size 16 on GV100
-#selectMethod = 'implicitGemmdace' #Baseline implicit gemm implementation
-
+# Set the dace implementation to run
 selectMethod = args.implementation
 
 if selectMethod == 'directConvNCDHWdace':
@@ -97,7 +92,9 @@ import time
 
 #outdir = f'./outputplots/{selectMethod}_out'
 outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
-#os.mkdir(outdir)
+if not os.path.exists(outdir):
+    os.mkdir(outdir)
+    
 with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'csv: {paramscsv}\n')
     f.writelines(f'warmup iteration: {warmupiter}\n')
