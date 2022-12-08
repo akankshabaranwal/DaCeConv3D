@@ -34,6 +34,8 @@ parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set
 parser.add_argument('-lastlayer','--lastlayer', type=int, default=1, help='set number of total iterations')
 parser.add_argument('-currlayer','--currlayer', type=int, default=0, help='set number of total iterations')
 
+parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmTileddace', help='select which implementation to run')
+
 # TODO: Check if you can plot and compare different versions of dace optimizations
 # TODO: Automate the roofline analysis plot
 # FIXME: Something is wrong with subplot when the csv file has just one row  
@@ -59,6 +61,8 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
+batchsizes = [2]
+
 if (verify and compareprof):
     sys.exit("!!! ERROR: Something pycuda context issue when both verif and compareprof are called together")
 
@@ -68,7 +72,10 @@ torch.cuda.empty_cache()
 # Select the dace implementation to run
 #selectMethod = 'directConvNCDHWdace'
 #selectMethod = 'directConvNDHWCdace' 
-selectMethod = 'implicitGemmdace' #Verified working with batch size 16 on GV100
+#selectMethod = 'implicitGemmTileddace' #Verified working with batch size 16 on GV100
+#selectMethod = 'implicitGemmdace' #Baseline implicit gemm implementation
+
+selectMethod = args.implementation
 
 if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
@@ -79,11 +86,17 @@ elif selectMethod == 'directConvNDHWCdace':
 elif selectMethod == 'implicitGemmdace':
     from implicitGemmdace import *
     layout = 'NDHWC'
+elif selectMethod == 'implicitGemmTileddace':
+    from implicitGemmTileddace import *
+    layout = 'NDHWC'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
-outdir = f'./outputplots/{selectMethod}_out'
-#outdir = f'./outputplots/out{math.floor(time.time())}'
+import math
+import time
+
+#outdir = f'./outputplots/{selectMethod}_out'
+outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
 #os.mkdir(outdir)
 with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'csv: {paramscsv}\n')
@@ -92,7 +105,7 @@ with open(f'./{outdir}/params.txt', 'w') as f:
     f.writelines(f'set launch wait: {setlaunchwait}\n')
 
 args = parser.parse_args()
-d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[0], layout)
+d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[0], layout, batchsizes[0])
 
 ## Prepare inputs for pytorch fun
 t_input = d_input.clone()
@@ -150,108 +163,109 @@ summary = []
 in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 for layern in range(currlayer, lastlayer):
-    d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[layern], layout)
-    layersummary = {}
-    t_input = d_input.clone()
-    t_kernel = d_kernel.clone()
+    for batchsize in batchsizes:
+        d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[layern], layout, batchsize)
+        layersummary = {}
+        t_input = d_input.clone()
+        t_kernel = d_kernel.clone()
 
-    inchannels = np.int32(inchannels)
-    indepth = np.int32(indepth)
-    inheight = np.int32(inheight)
-    inwidth = np.int32(inwidth)
-    outchannels = np.int32(outchannels)
-    batchsize = np.int32(batchsize)
-    outdepth = np.int32(indepth - kdim + 1)
-    outheight = np.int32(inheight - kdim + 1)
-    outwidth = np.int32(inwidth - kdim + 1)
-    
-    layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
-    print(f'INFO: NCDHW layout {layer_name}') 
-    layer_names.append(layer_name)
+        inchannels = np.int32(inchannels)
+        indepth = np.int32(indepth)
+        inheight = np.int32(inheight)
+        inwidth = np.int32(inwidth)
+        outchannels = np.int32(outchannels)
+        batchsize = np.int32(batchsize)
+        outdepth = np.int32(indepth - kdim + 1)
+        outheight = np.int32(inheight - kdim + 1)
+        outwidth = np.int32(inwidth - kdim + 1)
+        
+        layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
+        print(f'INFO: NCDHW layout {layer_name}') 
+        layer_names.append(layer_name)
 
-    cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
+        cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
-    # Code for verification
-    if verify:
-        print("INFO: Running verification to compare against cudnn output")
-        run_cudnn()
-        run_optim_dace()
-        d_output = d_output.cpu()
-        dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
-                              
-        diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
-        print('Difference between cudnn and dace values:', diff)
+        # Code for verification
+        if verify:
+            print("INFO: Running verification to compare against cudnn output")
+            run_cudnn()
+            run_optim_dace()
+            d_output = d_output.cpu()
+            dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
+                                
+            diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
+            print('Difference between cudnn and dace values:', diff)
 
-        if(diff<=1e-4): #TODO: Check if the threshold should be reduced
-            print(f"Verification successfull")
-        else:
-            sys.exit("!!! ERROR: Incorrect verification")
+            if(diff<=1e-4): #TODO: Check if the threshold should be reduced
+                print(f"Verification successfull")
+            else:
+                sys.exit("!!! ERROR: Incorrect verification")
 
-    # Profiling pytorch using run
-    if runtorch:
-        run_fun(run_torch, warmupiter, totaliter)
+        # Profiling pytorch using run
+        if runtorch:
+            run_fun(run_torch, warmupiter, totaliter)
 
-    # Profiling optimized dace using run
-    if runoptimdace:
-        run_fun(run_optim_dace, warmupiter, totaliter)
+        # Profiling optimized dace using run
+        if runoptimdace:
+            run_fun(run_optim_dace, warmupiter, totaliter)
 
-    # Profiling optimized dace using run
-    if runcudnn:
-        run_fun(run_cudnn, warmupiter, totaliter)
+        # Profiling optimized dace using run
+        if runcudnn:
+            run_fun(run_cudnn, warmupiter, totaliter)
 
-    # Comparitive profiling using time funcs
-    print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
-    print(f"INFO: Statistics for layer number {layern}")
-    dace_median = []
-    torch_median = []
-    cudnn_median = []
-    if compareprof:
-        times = time_funcs([run_optim_dace, run_cudnn],
-                        func_names=["dace", "cudnn"],
-                        warmups=warmupiter,
-                        num_iters=totaliter,
-                        launch_wait=setlaunchwait)
-        print_time_statistics(times, [ "dace", "cudnn"])
-        layersummary['layer_name'] = layer_name
-        layersummary['times'] = times
-        layersummary['dace_median'] = statistics.median(times[0])
-        layersummary['cudnn_median'] = statistics.median(times[1])
-        median_dace.append(statistics.median(times[0]))
-        median_cudnn.append(statistics.median(times[1]))
-        dace_median.append(times[0])
-        cudnn_median.append(times[1])
-        summary.append(layersummary)
+        # Comparitive profiling using time funcs
+        print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
+        print(f"INFO: Statistics for layer number {layern} with batch size of {batchsize}")
+        dace_median = []
+        torch_median = []
+        cudnn_median = []
+        if compareprof:
+            times = time_funcs([run_optim_dace, run_cudnn],
+                            func_names=["dace", "cudnn"],
+                            warmups=warmupiter,
+                            num_iters=totaliter,
+                            launch_wait=setlaunchwait)
+            print_time_statistics(times, [ "dace", "cudnn"])
+            layersummary['layer_name'] = layer_name
+            layersummary['times'] = times
+            layersummary['dace_median'] = statistics.median(times[0])
+            layersummary['cudnn_median'] = statistics.median(times[1])
+            median_dace.append(statistics.median(times[0]))
+            median_cudnn.append(statistics.median(times[1]))
+            dace_median.append(times[0])
+            cudnn_median.append(times[1])
+            summary.append(layersummary)
 
-    dace_median_array = np.array(dace_median)
-    cudnn_median_array = np.array(cudnn_median)
+        dace_median_array = np.array(dace_median)
+        cudnn_median_array = np.array(cudnn_median)
 
-    # run using prof for torch
-    if proftorch:
-        times = time_funcs([run_torch],
-                        func_names=["pytorch"],
-                        warmups=warmupiter,
-                        num_iters=totaliter,
-                        launch_wait=setlaunchwait)
-        print_time_statistics(times, [ "pytorch"])
+        # run using prof for torch
+        if proftorch:
+            times = time_funcs([run_torch],
+                            func_names=["pytorch"],
+                            warmups=warmupiter,
+                            num_iters=totaliter,
+                            launch_wait=setlaunchwait)
+            print_time_statistics(times, [ "pytorch"])
 
-    # run using prof for dace
-    if profoptimdace:
-        times = time_funcs([run_optim_dace],
-                        func_names=["optimdace"],
-                        warmups=warmupiter,
-                        num_iters=totaliter,
-                        launch_wait=setlaunchwait)
-        print_time_statistics(times, [ "optimdace"])
-    
-    if profcudnn:
-        times = time_funcs([run_cudnn],
-                        func_names=["cudnn"],
-                        warmups=warmupiter,
-                        num_iters=totaliter,
-                        launch_wait=setlaunchwait)
-        print_time_statistics(times, [ "cudnn"])
-    
-    in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+        # run using prof for dace
+        if profoptimdace:
+            times = time_funcs([run_optim_dace],
+                            func_names=["optimdace"],
+                            warmups=warmupiter,
+                            num_iters=totaliter,
+                            launch_wait=setlaunchwait)
+            print_time_statistics(times, [ "optimdace"])
+        
+        if profcudnn:
+            times = time_funcs([run_cudnn],
+                            func_names=["cudnn"],
+                            warmups=warmupiter,
+                            num_iters=totaliter,
+                            launch_wait=setlaunchwait)
+            print_time_statistics(times, [ "cudnn"])
+        
+        in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 
 createsummaryfile(summary, outdir, csv_columns)
