@@ -42,16 +42,16 @@ conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alp
 # Iteratively tiling the implicit gemm formulation
 # Tiles of size NTile by OutTile by OCTile
 # Merge d, h, w indexing to just 1 loop ? 
-CTAtile_N = 4
-CTAtile_DHW = 4 # This should divide outdepth, outheight, outwidth individually otherwise the indexing gets tricky.
-CTAtile_OC = 8
+CTAtileN = 4
+CTAtileDHW = 4 # This should divide outdepth, outheight, outwidth individually otherwise the indexing gets tricky.
+CTAtileOC = 8
 
-WARPtile_N = 2
-WARPtile_OC = 4
-WARPtile_DHWIC = 8
+WARPtileN = 2
+WARPtileOC = 4
+WARPtileDHWIC = 8
 DHW = outdepth*outheight*outwidth
 HW = outheight*outwidth
-CTAtile_DHW_IC = CTAtile_DHW*inchannels
+CTAtileDHWIC = CTAtileDHW*inchannels
 
 # Tiling direct convolution
 def direct_conv3d(direct_input, direct_kernel, direct_output):
@@ -62,18 +62,18 @@ def direct_conv3d(direct_input, direct_kernel, direct_output):
     #     for warp_n, woc, ... in dace.map[0:CTAtile_N] @ dace.ScheduleType.GPU_ThreadBlock:
     #       Whatever you allocate here goes to the register memory
 
-    for cta_n in range(0, batchsize, CTAtile_N):
-        for cta_dhw in range(0, DHW, CTAtile_DHW):
-            for cta_oc in range(0, outchannels, CTAtile_OC):
-                
+    for cta_n in range(0, batchsize, CTAtileN): # Can be distributed
+        for cta_dhw in range(0, DHW, CTAtileDHW): # Can be distributed
+            for cta_oc in range(0, outchannels, CTAtileOC): # Can be distributed
+                cta_reducedk = torch.zeros(CTAtileN, CTAtileDHW, CTAtileOC).cuda()
                 # Work allocated for a block
-                for warp_n in range(0, CTAtile_N, WARPtile_N):
-                    for warp_oc in range(0, CTAtile_OC, WARPtile_OC):
-                        for warp_dhwic in range(0, CTAtile_DHW_IC, WARPtile_DHWIC):
-                            
-                            for n in range(0, WARPtile_N):
-                                for oc in range(0, WARPtile_OC):
-                                        for dhw_ic in range(0, WARPtile_DHWIC): # all must go to the same block, but too much work for a single thread
+                for warp_n in range(0, CTAtileN, WARPtileN):
+                    for warp_oc in range(0, CTAtileOC, WARPtileOC):
+                        warp_reducedk = torch.zeros(WARPtileN, WARPtileOC).cuda()
+                        for warp_dhwic in range(0, CTAtileDHWIC, WARPtileDHWIC):                            
+                            for n in range(0, WARPtileN):
+                                for oc in range(0, WARPtileOC):
+                                        for dhw_ic in range(0, WARPtileDHWIC): 
                                             
                                             dhw, ic = divmod(dhw_ic+warp_dhwic, inchannels)
                                             d, dhw_residual = divmod(dhw+cta_dhw, HW)
@@ -81,7 +81,7 @@ def direct_conv3d(direct_input, direct_kernel, direct_output):
                                             for kd in range(0, kdim):
                                                 for kh in range(0, kdim):
                                                     for kw in range(0, kdim):
-                                                            direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] = direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] + direct_input[ n+cta_n+warp_n, d+kd, h+kh, w+kw, ic]*direct_kernel[oc+cta_oc+warp_oc, kd, kh, kw, ic]
+                                                        direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] = direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] + direct_input[ n+cta_n+warp_n, d+kd, h+kh, w+kw, ic]*direct_kernel[oc+cta_oc+warp_oc, kd, kh, kw, ic]
 
 layout = 'NDHWC'
 direct_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()

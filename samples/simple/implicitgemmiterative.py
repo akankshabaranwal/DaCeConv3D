@@ -43,132 +43,52 @@ CTAtileK = 4
 WARPtileM = 2
 WARPtileN = 2
 WARPtileK = 2
-
-def onlytiled_implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output):
-    tmp_dhw = outdepth*outheight*outwidth
-    tmp_hw = outheight*outwidth
-    tmp_kdim3 = kdim*kdim*kdim
-    tmp_kdim2 = kdim*kdim
-    GEMM_M = batchsize * outdepth * outheight * outwidth
-    GEMM_N = outchannels
-    GEMM_K = inchannels * kdim * kdim * kdim
-
-    # 2 levels of tiling
-    for cta_n in range(0, GEMM_N, CTAtileN): # Work division between blocks
-        for cta_m in range(0, GEMM_M, CTAtileM):            
-            for cta_k in range(0, GEMM_K, CTAtileK):
-
-                for warp_n in range(cta_n, CTAtileN+cta_n, WARPtileN): # Work division between threads, per block computation
-                    for warp_m in range(cta_m, CTAtileM+cta_m, WARPtileM): 
-                        for warp_k in range(cta_k, CTAtileK+cta_k, WARPtileK):
-
-                            for gemm_k in range(warp_k, WARPtileK+warp_k): # Work per thread
-                                for gemm_i in range(warp_m, WARPtileM+warp_m):
-                                    for gemm_j in range(warp_n, WARPtileN+warp_n):
-                                        
-                                        n, nopq_residual = divmod(gemm_i+warp_m, tmp_dhw)
-                                        o, opq_residual = divmod(nopq_residual, tmp_hw)
-                                        p, q = divmod(opq_residual, outwidth)
-                                        
-                                        c, ctrs_residual = divmod(gemm_k+warp_k, tmp_kdim3)
-                                        t, trs_residual = divmod(ctrs_residual, tmp_kdim2)
-                                        r, s = divmod(trs_residual, kdim)
-                                        d = o + t
-                                        h = p + r
-                                        w = q + s
-                                        imgemm_output[ n, o, p, q, gemm_j]  = imgemm_output[ n, o, p, q, gemm_j] + imgemm_input[n, d, h, w, c]*imgemm_kernel[gemm_j, t, r, s, c]
-
-
-CTAtileM = 4
-CTAtileN = 4
-CTAtileK = 4
-
-WARPtileM = 2
-WARPtileN = 2
-WARPtileK = 2
-
-def tiled_implicit_gemm_conv3d(Input, kernel, Output):
-    d_DHW = outdepth*outheight*outwidth
-    d_HW = outheight*outwidth
-    kdim3 = kdim*kdim*kdim
-    kdim2 = kdim*kdim
-    
+                                
+def dace_conv3d(Input, kernel, Output):
+    d_batchsize = batchsize
     d_outdepth = outdepth
     d_outheight = outheight
     d_outwidth = outwidth
+    d_outchannels = outchannels
+    d_inchannels = inchannels
+    d_kdim = kdim
+    d_GEMM_M = (d_batchsize*d_outdepth*d_outheight*d_outwidth)
+    d_GEMM_N = d_outchannels
+    d_GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
+    d_DHW = d_outdepth*d_outheight*d_outwidth
+    d_HW = d_outheight*d_outwidth
+    d_kdim3 = d_kdim*d_kdim*d_kdim
+    d_kdim2 = d_kdim*d_kdim
 
-    d_GEMM_M = batchsize * outdepth * outheight * outwidth
-    d_GEMM_N = outchannels
-    d_GEMM_K = inchannels * kdim * kdim * kdim
-    
     for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM]:
             cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
+            cta_reducedk[:] = 0
             for cta_k in dace.map[0:d_GEMM_K:CTAtileK]:
-                cta_splitk = torch.zeros(CTAtileM, CTAtileN).cuda()
-
                 for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
                         warp_reducedk = torch.zeros(WARPtileM, WARPtileN).cuda()
+                        warp_reducedk[:] = 0
                         for warp_k in dace.map[0:CTAtileK:WARPtileK]:
-                            warp_splitk = torch.zeros(WARPtileM, WARPtileN).cuda()                          
-
                             for gemm_k in dace.map[0: WARPtileK]:
                                 for gemm_m, gemm_n in dace.map[0:WARPtileM, 0:WARPtileN]:
-                                            n, nopq_residual = dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
-                                            o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
+                                            n, nopq_residual =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
+                                            o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)
                                             p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
 
-                                            c, ctrs_residual = dace.int32((gemm_k+cta_k+warp_k)/kdim3), dace.int32((gemm_k+cta_k+warp_k)%kdim3)
-                                            t, trs_residual = dace.int32(ctrs_residual/kdim2), dace.int32(ctrs_residual%kdim2)
-                                            r, s = dace.int32(trs_residual/kdim), dace.int32(trs_residual%kdim)
-
+                                            c, ctrs_residual = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3), dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
+                                            t, trs_residual = dace.int32(ctrs_residual/d_kdim2), dace.int32(ctrs_residual%d_kdim2)
+                                            r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
                                             d, h, w = o + t, p + r, q + s
 
-                                            warp_splitk[gemm_m, gemm_n] = Input[n, d, h, w, c]*kernel[gemm_n+cta_n+warp_n, t, r, s, c]
-                                warp_reducedk = warp_reducedk + warp_splitk
-
+                                            warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + Input[n, d, h, w, c]*kernel[gemm_n+cta_n+warp_n, t, r, s, c]
                         for tmp_m, tmp_n in dace.map[0: WARPtileM, 0:WARPtileN]:
-                                cta_splitk[tmp_m+warp_m, warp_n+tmp_n] = warp_reducedk[tmp_m, tmp_n]
-                cta_reducedk = cta_reducedk + cta_splitk
+                                cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] = cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] + warp_reducedk[tmp_m, tmp_n]
 
-            for assignM, assignN in dace.map[0:CTAtileM, 0:CTAtileN]:
-                    n, nopq_residual = dace.int32((cta_m+assignM)/d_DHW), dace.int32((cta_m+assignM) % d_DHW)
-                    o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
-                    p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
-                    Output[ n, o, p, q, cta_n+assignN] = cta_reducedk[assignM, assignN]
-                
-    
-
-'''  
-    for cta_n in range(0, GEMM_N, CTAtileN): # Work division between blocks
-        for cta_m in range(0, GEMM_M, CTAtileM):            
-            for cta_k in range(0, GEMM_K, CTAtileK):
-
-                cta_output_buffer = torch.zeros(CTAtileN, CTAtileM, CTAtileK).cuda()
-                for warp_n in range(cta_n, CTAtileN+cta_n, WARPtileN): # Work division between threads, per block computation
-                    for warp_m in range(cta_m, CTAtileM+cta_m, WARPtileM): 
-                        for warp_k in range(cta_k, CTAtileK+cta_k, WARPtileK):
-
-                            for gemm_k in range(warp_k, WARPtileK+warp_k): # Work per thread
-                                for gemm_i in range(warp_m, WARPtileM+warp_m):
-                                    for gemm_j in range(warp_n, WARPtileN+warp_n):
-                                        
-                                        n, nopq_residual = divmod(gemm_i+warp_m, tmp_dhw)
-                                        o, opq_residual = divmod(nopq_residual, tmp_hw)
-                                        p, q = divmod(opq_residual, outwidth)
-                                        
-                                        c, ctrs_residual = divmod(gemm_k+warp_k, tmp_kdim3)
-                                        t, trs_residual = divmod(ctrs_residual, tmp_kdim2)
-                                        r, s = divmod(trs_residual, kdim)
-                                        d = o + t
-                                        h = p + r
-                                        w = q + s
-                                        #cta_output_buffer[warp_n-cta_n, warp_m-cta_m, warp_k-cta_k] = cta_output_buffer[warp_n-cta_n, warp_m-cta_m, warp_k-cta_k] + imgemm_input[n, d, h, w, c]*imgemm_kernel[gemm_j, t, r, s, c]
-                                        imgemm_output[ n, o, p, q, gemm_j]  = imgemm_output[ n, o, p, q, gemm_j] + imgemm_input[n, d, h, w, c]*imgemm_kernel[gemm_j, t, r, s, c]
-                
-                # The Epilogue part
-                # Reduce the cta_output_buffer
-                # Assign the appropriate imgemm output to the cta_output_buffer
-'''
+            for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
+                    for assign_n, assign_m in dace.map[warp_n:WARPtileN+warp_n, warp_m:WARPtileM+warp_m]:
+                        n, nopq_residual = dace.int32((cta_m+assign_m)/d_DHW), dace.int32((cta_m+assign_m) % d_DHW)
+                        o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
+                        p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+                        Output[ n, o, p, q, cta_n+assign_n] = cta_reducedk[assign_m, assign_n]
 
 layout = 'NDHWC'
 imgemm_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
@@ -179,7 +99,7 @@ cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, 
 libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_desc, filt_data, 
                             conv_desc, convolution_algo, ws_data, ws_size.value, 
                             beta, out_desc, out_data)
-tiled_implicit_gemm_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
+dace_conv3d(imgemm_input, imgemm_kernel, imgemm_output)
 
 imgemm_output_g = gpuarray.to_gpu(imgemm_output.cpu().numpy().astype(np.float32))
 diff = np.linalg.norm((imgemm_output_g - out_data_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
