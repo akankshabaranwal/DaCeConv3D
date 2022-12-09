@@ -38,7 +38,8 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     
     return
 
-CTAtileM =  64
+
+CTAtileM =  32
 CTAtileN = 4
 CTAtileK = 2
 
