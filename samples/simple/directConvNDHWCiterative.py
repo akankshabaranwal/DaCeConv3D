@@ -54,7 +54,7 @@ HW = outheight*outwidth
 CTAtileDHWIC = CTAtileDHW*inchannels
 
 # Tiling direct convolution
-def direct_conv3d(direct_input, direct_kernel, direct_output):
+def direct_conv3d_onlytiled(direct_input, direct_kernel, direct_output):
     # Hint:
     # dace.ndarray([], dace.float32, storage=dace.StorageType.)
     # for cta_n, dhw, oc in dace.map[0:batchsize:CTAtile_N, ...] @ dace.ScheduleType.GPU_Device:
@@ -83,6 +83,35 @@ def direct_conv3d(direct_input, direct_kernel, direct_output):
                                                     for kw in range(0, kdim):
                                                         direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] = direct_output[n+cta_n+warp_n, d, h, w, oc+cta_oc+warp_oc] + direct_input[ n+cta_n+warp_n, d+kd, h+kh, w+kw, ic]*direct_kernel[oc+cta_oc+warp_oc, kd, kh, kw, ic]
 
+
+CTAtileN = 1
+CTAtileDHW = 4 # This should divide outdepth, outheight, outwidth individually otherwise the indexing gets tricky.
+CTAtileOC = 1
+def dace_conv3d( Input, kernel, Output):
+    
+    d_batchsize = batchsize
+    d_outdepth = outdepth
+    d_outheight = outheight
+    d_outwidth = outwidth
+    d_outchannels = outchannels
+    d_inchannels = inchannels
+    d_kdim = kdim
+    d_DHW = d_outdepth*d_outheight*d_outwidth
+    d_HW = d_outheight*d_outwidth
+
+    for cta_n, cta_dhw, cta_oc in dace.map[0:d_batchsize:CTAtileN, 0:d_DHW:CTAtileDHW, 0:d_outchannels:CTAtileOC]:
+        cta_shared = torch.zeros(CTAtileN, CTAtileDHW, CTAtileOC).cuda()
+        cta_shared[:] = 0
+        for n, dhw, oc in dace.map[0:CTAtileN, 0:CTAtileDHW, 0:CTAtileOC]:
+            d, dhw_residual = dace.int32((dhw+cta_dhw)/d_HW), dace.int32((dhw+cta_dhw)%d_HW)
+            h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)
+            for ic, kd, kh, kw in dace.map[0:d_inchannels, 0:d_kdim, 0:d_kdim, 0:d_kdim]:
+                cta_shared[n, dhw, oc] = cta_shared[n, dhw, oc] + Input[ n+cta_n, d+kd, h+kh, w+kw, ic]*kernel[oc+cta_oc, kd, kh, kw, ic]
+        for n, dhw, oc in dace.map[0:CTAtileN, 0:CTAtileDHW, 0:CTAtileOC]:
+            d, dhw_residual = dace.int32((dhw+cta_dhw)/d_HW), dace.int32((dhw+cta_dhw)%d_HW)
+            h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)                         
+            Output[n+cta_n, d, h, w, oc+cta_oc] = cta_shared[n, dhw, oc]
+
 layout = 'NDHWC'
 direct_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
 direct_kernel = torch.rand(outchannels, kdim, kdim, kdim, inchannels).cuda()
@@ -97,7 +126,7 @@ libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_de
 #diff = np.linalg.norm((direct_output_g - out_data_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
 #print('Earlier difference between cudnn and direct conv values:', diff)
 
-direct_conv3d(direct_input, direct_kernel, direct_output)
+dace_conv3d(direct_input, direct_kernel, direct_output)
 direct_output_g = gpuarray.to_gpu(direct_output.cpu().numpy().astype(np.float32))
 diff = np.linalg.norm((direct_output_g - out_data_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
 print('Difference between cudnn and direct conv values:', diff)
