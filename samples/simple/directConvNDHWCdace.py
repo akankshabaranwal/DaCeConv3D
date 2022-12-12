@@ -16,6 +16,7 @@ d_kdim = dace.symbol('d_kdim')
 
 d_DHW = dace.symbol('d_DHW')
 d_HW = dace.symbol('d_HW')
+d_CTAtileDHW = dace.symbol('d_CTAtileDHW')
 
 
 # Define data type to use
@@ -45,7 +46,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 
 CTAtileN = 1
-CTAtileDHW = 64 # This should divide outdepth, outheight, outwidth individually otherwise the indexing gets tricky.
+CTAtileDHW = 32 # This should divide outdepth, outheight, outwidth individually otherwise the indexing gets tricky.
 CTAtileOC = 1
 
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
@@ -55,6 +56,8 @@ def dace_conv3d( Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kd
     
     d_DHW = d_outdepth*d_outheight*d_outwidth
     d_HW = d_outheight*d_outwidth
+    #d_CTAtileDHW = dace.int32(d_outdepth/2)
+
     for cta_n, cta_dhw, cta_oc in dace.map[0:d_batchsize:CTAtileN, 0:d_DHW:CTAtileDHW, 0:d_outchannels:CTAtileOC]@dace.ScheduleType.GPU_Device:
         cta_shared = dace.ndarray([CTAtileN, CTAtileDHW, CTAtileOC], dtype=Input.dtype)
         cta_shared[:] = 0
