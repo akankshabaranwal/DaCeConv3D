@@ -158,9 +158,10 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
     ncol = lastlayer-currlayer
     row = 0
     col = 0
-    fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True, sharex=True)
-    full_df = pd.DataFrame(columns = ['layer_name','fun_name','times'])
+
     if enableplots:
+        fig, axes = plt.subplots(nrow, ncol, figsize=(18, 10), sharey=True, sharex=True)
+        full_df = pd.DataFrame(columns = ['layer_name','fun_name','times'])
         layern = 0
         for layersummary in summary:
             times = layersummary["times"]

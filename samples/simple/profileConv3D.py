@@ -19,7 +19,13 @@ import torch.nn.functional as F
 from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 import pandas as pd 
 
-parser = argparse.ArgumentParser(description='Process some integers.')
+parser = argparse.ArgumentParser(description='Process the input arguments')
+# Reference for dace code: https://spcldace.readthedocs.io/en/latest/general/debugging.html
+# Make changes in the generated code, compile it using: cd .dacecache/<fun>/build; make;
+# Use this to call: DACE_compiler_use_cache=1 python profileConv3D.py <...>
+
+parser.add_argument('--loadprecompiled', action='store_true', help='load from a precompiled dace folder')
+
 parser.add_argument('-paramscsv','--paramscsv', type=str, default='cosmoflow', help='select which csv to profile')
 parser.add_argument('--verify', action='store_true', help='run verification')
 parser.add_argument('--compareprof', action='store_true', help='time funcs comparative summary time')
@@ -44,6 +50,7 @@ args = parser.parse_args()
 
 paramscsv = args.paramscsv
 convparams =  parsecsv(paramscsv)
+loadprecompiled = args.loadprecompiled
 verify = args.verify
 compareprof = args.compareprof
 runtorch = False
@@ -121,7 +128,6 @@ outwidth = inwidth - kdim + 1
 pad = 0
 dil = 1
 stride = 1
-sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
 
 # Initializing cudnn
 conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
@@ -130,9 +136,15 @@ conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alp
 ## cudnn variable parameters init, these change across different layers and are called multiple times
 cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
-# Apply optimizations for dace
-optimize_for_gpu(sdfg_fun)
-optim_dace = sdfg_fun.compile()
+if loadprecompiled:
+    from dace.sdfg.utils import load_precompiled_sdfg
+    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/dacelocal/.dacecache/{selectMethod}_dace_conv3d')
+else:    
+    sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
+    optimize_for_gpu(sdfg_fun)
+    optim_dace = sdfg_fun.compile()
+
+
 
 # Function call for pytorch 3D conv
 def run_torch():
@@ -188,8 +200,9 @@ for layern in range(currlayer, lastlayer):
             run_cudnn()
             run_optim_dace()
             d_output = d_output.cpu()
+            #print(d_output)
             dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
-                                
+
             diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
             print('Difference between cudnn and dace values:', diff)
 

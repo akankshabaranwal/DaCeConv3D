@@ -11,7 +11,7 @@ inchannels = 4
 indepth = 10
 inheight = 10
 inwidth = 10
-outchannels = 8
+outchannels = 4
 kdim = 3
 outdepth = indepth - kdim + 1
 outheight = inheight - kdim + 1
@@ -63,13 +63,7 @@ def dace_conv3d(Input, kernel, Output):
     for cta_n, cta_m, cta_k in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM, 0:d_GEMM_K:CTAtileK]:
             cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
             cta_reducedk[:] = 0
-            for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
-                for assign_n, assign_m in dace.map[warp_n:WARPtileN+warp_n, warp_m:WARPtileM+warp_m]:
-                    n, nopq_residual = dace.int32((cta_m+assign_m)/d_DHW), dace.int32((cta_m+assign_m) % d_DHW)
-                    o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
-                    p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
-                    cta_reducedk[assign_m, assign_n] = Output[ n, o, p, q, cta_n+assign_n]
-#            for cta_k in dace.map[0:d_GEMM_K:CTAtileK]:
+
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
                     warp_reducedk = torch.zeros(WARPtileM, WARPtileN).cuda()
                     warp_reducedk[:] = 0
@@ -93,7 +87,7 @@ def dace_conv3d(Input, kernel, Output):
                         n, nopq_residual = dace.int32((cta_m+assign_m)/d_DHW), dace.int32((cta_m+assign_m) % d_DHW)
                         o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
                         p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
-                        Output[ n, o, p, q, cta_n+assign_n] = cta_reducedk[assign_m, assign_n]
+                        Output[ n, o, p, q, cta_n+assign_n] = Output[ n, o, p, q, cta_n+assign_n] + cta_reducedk[assign_m, assign_n]
 
 layout = 'NDHWC'
 imgemm_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
