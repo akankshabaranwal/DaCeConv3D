@@ -60,6 +60,12 @@ def dace_conv3d(Input, kernel, Output):
     d_kdim3 = d_kdim*d_kdim*d_kdim
     d_kdim2 = d_kdim*d_kdim
 
+    ncta_n = dace.int32(d_GEMM_N/CTAtileN)
+    ncta_m = dace.int32(d_GEMM_M/CTAtileM)
+    ncta_k = dace.int32(d_GEMM_K/CTAtileK)
+    print(ncta_n, ncta_m, ncta_k)
+    commonCTA = torch.zeros(ncta_n, ncta_m, ncta_k, CTAtileM, CTAtileN).cuda()
+
     for cta_n, cta_m, cta_k in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM, 0:d_GEMM_K:CTAtileK]:
             cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
             cta_reducedk[:] = 0
@@ -84,10 +90,29 @@ def dace_conv3d(Input, kernel, Output):
                             cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] = cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] + warp_reducedk[tmp_m, tmp_n]
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
                     for assign_n, assign_m in dace.map[warp_n:WARPtileN+warp_n, warp_m:WARPtileM+warp_m]:
-                        n, nopq_residual = dace.int32((cta_m+assign_m)/d_DHW), dace.int32((cta_m+assign_m) % d_DHW)
-                        o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
-                        p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
-                        Output[ n, o, p, q, cta_n+assign_n] = Output[ n, o, p, q, cta_n+assign_n] + cta_reducedk[assign_m, assign_n]
+                        icta_n = dace.int32(cta_n/CTAtileN)
+                        icta_m = dace.int32(cta_m/CTAtileM)
+                        icta_k = dace.int32(cta_k/CTAtileK)
+                        commonCTA[icta_n, icta_m, icta_k, assign_m, assign_n] = commonCTA[icta_n, icta_m, icta_k, assign_m, assign_n] + cta_reducedk[assign_m, assign_n]
+
+    # Epilogue
+    for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM]:
+            cta_newreducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
+            cta_newreducedk[:] = 0
+            for cta_k in dace.map[0:d_GEMM_K:CTAtileK]:
+                for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
+                        for assign_n, assign_m in dace.map[warp_n:WARPtileN+warp_n, warp_m:WARPtileM+warp_m]:
+                            icta_n = dace.int32(cta_n/CTAtileN)
+                            icta_m = dace.int32(cta_m/CTAtileM)
+                            icta_k = dace.int32(cta_k/CTAtileK)
+                            cta_newreducedk[assign_m, assign_n] = cta_newreducedk[assign_m, assign_n] + commonCTA[icta_n, icta_m, icta_k, assign_m, assign_n]
+            for cta_k in dace.map[0:d_GEMM_K:CTAtileK]:
+                for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
+                        for assign_n, assign_m in dace.map[warp_n:WARPtileN+warp_n, warp_m:WARPtileM+warp_m]:
+                            n, nopq_residual = dace.int32((cta_m+assign_m)/d_DHW), dace.int32((cta_m+assign_m) % d_DHW)
+                            o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
+                            p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+                            Output[ n, o, p, q, cta_n+assign_n] = cta_newreducedk[assign_m, assign_n]
 
 layout = 'NDHWC'
 imgemm_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
