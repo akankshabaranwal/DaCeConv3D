@@ -142,6 +142,7 @@ if loadprecompiled:
 else:    
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
     optimize_for_gpu(sdfg_fun)
+    #optim_dace = dace_conv3d
     optim_dace = sdfg_fun.compile()
 
 
