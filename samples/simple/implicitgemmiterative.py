@@ -230,10 +230,35 @@ def dace_conv3d(Input, kernel, Output):
                 d, h, w = o + t, p + r, q + s
                 cta_input[thread_m, thread_k] = Input[n, d, h, w, c]
                 cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
-            for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]: # thread parallel
-                for thread_k in range(0, CTAtileK):
-                    cta_reducedk[thread_m, thread_n] = cta_reducedk[thread_m, thread_n] + cta_input[thread_m, thread_k]*cta_kernel[thread_k, thread_n]
 
+            nthread_n = dace.int32(CTAtileN/WARPtileN)
+            nthread_m = dace.int32(CTAtileM/WARPtileM)
+            tmpCTA = torch.ones(nthread_n, nthread_m, WARPtileM, WARPtileN).cuda()
+            for thread_x, thread_y in dace.map[0:nthread_n, 0:nthread_m]:
+                for x in range(0, WARPtileM):
+                    for y in range(0, WARPtileN):
+                        tmpCTA[thread_x, thread_y, x, y] = 0
+
+            for thread_n, thread_m in dace.map[0: CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]:
+                warp_reducedk = torch.zeros(WARPtileM, WARPtileN).cuda()
+
+                for thread_k in range(0, CTAtileK, WARPtileK):
+                    for gemm_k in range(0, WARPtileK):
+                        for gemm_n in range(0, WARPtileN):
+                            for gemm_m in range(0, WARPtileM):
+                                warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + cta_input[thread_m+gemm_m, thread_k+gemm_k]*cta_kernel[thread_k+gemm_k, thread_n+gemm_n]
+                ithread_n = dace.int32(thread_n/WARPtileN)
+                ithread_m = dace.int32(thread_m/WARPtileM)
+                for tmp_m, tmp_n in dace.map[0: WARPtileM, 0:WARPtileN]:
+                    tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] = tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] + warp_reducedk[tmp_m, tmp_n]
+            for thread_n, thread_m in dace.map[0:CTAtileN, 0:CTAtileM]:
+                ithread_n = dace.int32(thread_n/WARPtileN)
+                tmp_n = dace.int32(thread_n%WARPtileN)
+                ithread_m = dace.int32(thread_m/WARPtileM)
+                tmp_m = dace.int32(thread_m%WARPtileM)
+                
+                cta_reducedk[thread_m, thread_n] = cta_reducedk[thread_m, thread_n] + tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n]
+        
         for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]: # Write to output array
             n = dace.int32((cta_m+thread_m)/d_DHW)
             nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)

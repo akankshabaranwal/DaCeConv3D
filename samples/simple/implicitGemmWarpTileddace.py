@@ -100,6 +100,11 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                     cta_input[thread_m, thread_k] = Input[n, d, h, w, c]
                     cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
 
+                tmpCTA = dace.ndarray([nthread_n, nthread_m, WARPtileM, WARPtileN], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
+                for thread_x, thread_y in dace.map[0:nthread_n, 0:nthread_m]@dace.ScheduleType.GPU_ThreadBlock:
+                    for x in range(0, WARPtileM):
+                        for y in range(0, WARPtileN):
+                            tmpCTA[thread_x, thread_y, x, y] = 0
                 for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                         warp_reducedk = dace.ndarray([WARPtileM, WARPtileN], dtype=Input.dtype, storage=dace.StorageType.Register)
                         warp_reducedk[:] = 0
@@ -108,9 +113,13 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                                 for gemm_m in range(0, WARPtileM):
                                     for gemm_n in range(0, WARPtileN):
                                             warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + cta_input[warp_m+gemm_m, warp_k+gemm_k]*cta_kernel[warp_k+gemm_k, warp_n+gemm_n]
+                        ithread_n = dace.int32(warp_n/WARPtileN)
+                        ithread_m = dace.int32(warp_m/WARPtileM)                    
                         for tmp_m in range(0, WARPtileM):
                             for tmp_n in range(0, WARPtileN):
                                 cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] = cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] + warp_reducedk[tmp_m, tmp_n]
+                                tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] = tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] + warp_reducedk[tmp_m, tmp_n]
+
 
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 for assign_n in range(warp_n, WARPtileN+warp_n):
