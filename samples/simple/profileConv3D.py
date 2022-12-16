@@ -91,6 +91,9 @@ elif selectMethod == 'implicitGemmdace':
 elif selectMethod == 'implicitGemmTileddace':
     from implicitGemmTileddace import *
     layout = 'NDHWC'
+elif selectMethod == 'implicitGemmWarpTileddace':
+    from implicitGemmWarpTileddace import *
+    layout = 'NDHWC'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 

@@ -45,22 +45,22 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 
 # Distribute computation along GEMM_M, GEMM_N 
-CTAtileM =  8
+CTAtileM =  4
 CTAtileN = 4
 CTAtileK = 2 # Does not effect the parallel part. Keep it 1.
 
-WARPtileM = 1
-WARPtileN = 1
+WARPtileM = 2
+WARPtileN = 2
 WARPtileK = 1 # Does not effect the parallel part. Keep it 1.
 
+nthread_n = np.int32(CTAtileN/WARPtileN)
+nthread_m = np.int32(CTAtileM/WARPtileM)
 # Assertion for shared memory 
 assert((CTAtileM * CTAtileN + CTAtileM * CTAtileK + CTAtileN*CTAtileK)*4 < 81920)
 # Assertion for thread size
 assert(np.int32((CTAtileM/WARPtileM)*(CTAtileN/WARPtileN)*(CTAtileK/WARPtileK))<1024)
 
-# # Use code from here to revert to last working version: https://gitlab.ethz.ch/abaranwal/dacelocal/-/blob/7c78decc3d7dbd3da47576e24bc0c5d051601f65/samples/simple/implicitGemmTileddace.py
-# Tiling and buffering along GEMM_M, GEMM_N
-#TODO: Check what happens if you change the kdim variables to constants instead of dace map.
+
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
 def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1, d_inchannels] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_kdim, d_kdim, d_kdim, d_inchannels] @dace.StorageType.GPU_Global,
