@@ -79,28 +79,27 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
         cta_reducedk[:] = 0
 
         for cta_k in range(0, d_GEMM_K, CTAtileK):
-            # Load the required input and filter to shared memory.
             cta_input = dace.ndarray([CTAtileM, CTAtileK], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             cta_kernel = dace.ndarray([CTAtileK, CTAtileN], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             
-            # Load input, kernel to shared memory.
-            for thread_n, thread_m, thread_k in dace.map[0: CTAtileN, 0: CTAtileM, 0:CTAtileK]@dace.ScheduleType.GPU_ThreadBlock: # thread parallel
-                n =  dace.int32((cta_m+thread_m)/d_DHW)
-                nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)
-                o = dace.int32(nopq_residual/d_HW)
-                opq_residual = dace.int32(nopq_residual%d_HW)
-                p = dace.int32(opq_residual/d_outwidth)
-                q = dace.int32(opq_residual%d_outwidth)
+            for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock: # thread parallel
+                for thread_k in range(0, CTAtileK):
+                    n =  dace.int32((cta_m+thread_m)/d_DHW)
+                    nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)
+                    o = dace.int32(nopq_residual/d_HW)
+                    opq_residual = dace.int32(nopq_residual%d_HW)
+                    p = dace.int32(opq_residual/d_outwidth)
+                    q = dace.int32(opq_residual%d_outwidth)
 
-                c = dace.int32((cta_k+thread_k)/d_kdim3)
-                ctrs_residual = dace.int32((cta_k+thread_k)%d_kdim3)
-                t = dace.int32(ctrs_residual/d_kdim2)
-                trs_residual = dace.int32(ctrs_residual%d_kdim2)
-                r = dace.int32(trs_residual/d_kdim)
-                s = dace.int32(trs_residual%d_kdim)
-                d, h, w = o + t, p + r, q + s
-                cta_input[thread_m, thread_k] = Input[n, d, h, w, c]
-                cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
+                    c = dace.int32((cta_k+thread_k)/d_kdim3)
+                    ctrs_residual = dace.int32((cta_k+thread_k)%d_kdim3)
+                    t = dace.int32(ctrs_residual/d_kdim2)
+                    trs_residual = dace.int32(ctrs_residual%d_kdim2)
+                    r = dace.int32(trs_residual/d_kdim)
+                    s = dace.int32(trs_residual%d_kdim)
+                    d, h, w = o + t, p + r, q + s
+                    cta_input[thread_m, thread_k] = Input[n, d, h, w, c]
+                    cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
 
             for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock: # thread parallel
                 for thread_k in range(0, CTAtileK):

@@ -45,16 +45,47 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 
 # Distribute computation along GEMM_M, GEMM_N 
-CTAtileM =  64
-CTAtileN = 4
-CTAtileK = 2 # Does not effect the parallel part. Keep it 1.
+CTAtileM =  32
+CTAtileN = 16
+CTAtileK = 4
+
+WARPtileM = 4
+WARPtileN = 2
+WARPtileK = 1
+
+# Best perf is with below for the first layer
+'''
+CTAtileM =  32
+CTAtileN = 16
+CTAtileK = 4
+
+WARPtileM = 4
+WARPtileN = 2
+WARPtileK = 1
+'''
+
+# Best perf is with below for the second layer onwards
+'''
+CTAtileM =  16
+CTAtileN = 32
+CTAtileK = 4
 
 WARPtileM = 2
-WARPtileN = 2
-WARPtileK = 1 # Does not effect the parallel part. Keep it 1.
+WARPtileN = 4
+WARPtileK = 1
+'''
 
-nthread_n = np.int32(CTAtileN/WARPtileN)
-nthread_m = np.int32(CTAtileM/WARPtileM)
+# Best perf is with below for the third layer onwards
+'''
+CTAtileM =  8
+CTAtileN = 64
+CTAtileK = 4
+
+WARPtileM = 2
+WARPtileN = 4
+WARPtileK = 1
+'''
+
 # Assertion for shared memory 
 assert((CTAtileM * CTAtileN + CTAtileM * CTAtileK + CTAtileN*CTAtileK)*4 < 81920)
 # Assertion for thread size
@@ -85,14 +116,28 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                 for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                     for warp_k in dace.map[0:CTAtileK:WARPtileK]@dace.ScheduleType.Sequential:
                         for gemm_k, gemm_m, gemm_n in dace.map[0:WARPtileK, 0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
-                            n, nopq_residual =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
-                            o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)
-                            p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
 
-                            c, ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3), dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
-                            t, trs_residual = dace.int32(ctrs_residual/d_kdim2), dace.int32(ctrs_residual%d_kdim2)
-                            r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
-                            d, h, w = o + t, p + r, q + s
+                            n =  dace.int32(dace.float32(gemm_m+cta_m+warp_m)/dace.float32(d_DHW))
+                            nopq_residual =  dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
+
+                            o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))
+                            opq_residual = dace.int32(nopq_residual%d_HW)
+                            
+                            p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
+                            q = dace.int32(opq_residual%d_outwidth)
+
+                            c  = dace.int32(dace.float32(gemm_k+cta_k+warp_k)/dace.float32(d_kdim3))
+                            ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
+                            
+                            t = dace.int32(dace.float32(ctrs_residual)/dace.float32(d_kdim2))
+                            trs_residual = dace.int32(ctrs_residual%d_kdim2)
+                            
+                            r = dace.int32(dace.float32(trs_residual)/dace.float32(d_kdim))
+                            s = dace.int32(trs_residual%d_kdim)
+                            
+                            d = o + t
+                            h = p + r
+                            w = q + s
 
                             cta_input[warp_m + gemm_m, warp_k + gemm_k] = Input[n, d, h, w, c]
                             cta_kernel[warp_k + gemm_k, warp_n + gemm_n] = kernel[gemm_n+cta_n+warp_n, t, r, s, c]
@@ -105,20 +150,10 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                             warp_input = dace.ndarray([WARPtileM, WARPtileK], dtype=Input.dtype, storage=dace.StorageType.Register)
                             warp_kernel = dace.ndarray([WARPtileK, WARPtileN], dtype=Input.dtype, storage=dace.StorageType.Register)
                             for gemm_k, gemm_m, gemm_n in dace.map[0:WARPtileK, 0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
-                                # TODO: Fix the writes in this part. There is some weird overlap happening here.
                                 warp_input[gemm_m, gemm_k] = cta_input[warp_m + gemm_m, warp_k + gemm_k]
                                 warp_kernel[gemm_k, gemm_n] = cta_kernel[warp_k + gemm_k, warp_n + gemm_n]
 
                             for gemm_k, gemm_m, gemm_n in dace.map[0:WARPtileK, 0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
-                                n, nopq_residual =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
-                                o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)
-                                p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
-
-                                c, ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3), dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
-                                t, trs_residual = dace.int32(ctrs_residual/d_kdim2), dace.int32(ctrs_residual%d_kdim2)
-                                r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
-                                d, h, w = o + t, p + r, q + s
-                                # TODO: Fix the writes to warp_reducedk. It is causing some overwrites
                                 warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + warp_input[gemm_m, gemm_k]*warp_kernel[gemm_k, gemm_n]
                                                 
                         for tmp_m, tmp_n in dace.map[0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
@@ -126,7 +161,14 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
 
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 for gemm_m, gemm_n in dace.map[0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
-                    n, nopq_residual = dace.int32((cta_m+gemm_m+warp_m)/d_DHW), dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
-                    o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
-                    p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+
+                    n = dace.int32(dace.float32((cta_m+gemm_m+warp_m)/dace.float32(d_DHW)))
+                    nopq_residual = dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
+
+                    o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))        
+                    opq_residual = dace.int32(nopq_residual%d_HW)        
+                    
+                    p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
+                    q = dace.int32(opq_residual%d_outwidth)
+
                     Output[ n, o, p, q, cta_n+gemm_n+warp_n] = cta_reducedk[gemm_m+warp_m, gemm_n+warp_n]

@@ -71,7 +71,7 @@ lastlayer = min(args.lastlayer, convparams.shape[0])
 batchsizes = [16]
 
 if (verify and compareprof):
-    sys.exit("!!! ERROR: Something pycuda context issue when both verif and compareprof are called together")
+    sys.exit("!!! ERROR: Some pycuda context issue when both verif and compareprof are called together")
 
 torch.cuda.empty_cache()
 
