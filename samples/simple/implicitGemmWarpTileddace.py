@@ -116,23 +116,28 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                 for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                     for warp_k in dace.map[0:CTAtileK:WARPtileK]@dace.ScheduleType.Sequential:
                         for gemm_k, gemm_m, gemm_n in dace.map[0:WARPtileK, 0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
-
-                            n =  dace.int32(dace.float32(gemm_m+cta_m+warp_m)/dace.float32(d_DHW))
+                            n =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW)
+                            #n =  dace.int32(dace.float32(gemm_m+cta_m+warp_m)/dace.float32(d_DHW))
                             nopq_residual =  dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
 
-                            o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))
+                            o = dace.int32(nopq_residual/d_HW)
+                            #o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))
                             opq_residual = dace.int32(nopq_residual%d_HW)
                             
-                            p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
+                            p = dace.int32(opq_residual/d_outwidth)
+                            #p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
                             q = dace.int32(opq_residual%d_outwidth)
 
-                            c  = dace.int32(dace.float32(gemm_k+cta_k+warp_k)/dace.float32(d_kdim3))
+                            c  = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3)
+                            #c  = dace.int32(dace.float32(gemm_k+cta_k+warp_k)/dace.float32(d_kdim3))
                             ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
                             
-                            t = dace.int32(dace.float32(ctrs_residual)/dace.float32(d_kdim2))
+                            t = dace.int32(ctrs_residual/d_kdim2)
+                            #t = dace.int32(dace.float32(ctrs_residual)/dace.float32(d_kdim2))
                             trs_residual = dace.int32(ctrs_residual%d_kdim2)
                             
-                            r = dace.int32(dace.float32(trs_residual)/dace.float32(d_kdim))
+                            r = dace.int32(trs_residual/d_kdim)
+                            #r = dace.int32(dace.float32(trs_residual)/dace.float32(d_kdim))
                             s = dace.int32(trs_residual%d_kdim)
                             
                             d = o + t
@@ -162,13 +167,16 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 for gemm_m, gemm_n in dace.map[0:WARPtileM, 0:WARPtileN]@dace.ScheduleType.Sequential:
 
-                    n = dace.int32(dace.float32((cta_m+gemm_m+warp_m)/dace.float32(d_DHW)))
+                    n =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW)
+                    #n = dace.int32(dace.float32((cta_m+gemm_m+warp_m)/dace.float32(d_DHW)))
                     nopq_residual = dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
-
-                    o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))        
+                    
+                    o = dace.int32(nopq_residual/d_HW)
+                    #o = dace.int32(dace.float32(nopq_residual)/dace.float32(d_HW))        
                     opq_residual = dace.int32(nopq_residual%d_HW)        
                     
-                    p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
+                    p = dace.int32(opq_residual/d_outwidth)
+                    #p = dace.int32(dace.float32(opq_residual)/dace.float32(d_outwidth))
                     q = dace.int32(opq_residual%d_outwidth)
 
                     Output[ n, o, p, q, cta_n+gemm_n+warp_n] = cta_reducedk[gemm_m+warp_m, gemm_n+warp_n]
