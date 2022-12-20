@@ -205,69 +205,79 @@ def dace_conv3d(Input, kernel, Output):
     d_kdim3 = d_kdim*d_kdim*d_kdim
     d_kdim2 = d_kdim*d_kdim
 
-    for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM]: # block parallel
-        cta_reducedk = torch.zeros(CTAtileM, CTAtileN).cuda()
-        for cta_k in range(0, d_GEMM_K, CTAtileK):
-            # Load the required input and filter to shared memory.
-            cta_input = torch.zeros(CTAtileM, CTAtileK).cuda()
-            cta_kernel = torch.zeros(CTAtileK, CTAtileN).cuda()
+    for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM]:
+            cta_reducedk = torch.ones(CTAtileM, CTAtileN).cuda()
             
-            # Load input, kernel to shared memory.
-            for thread_n, thread_m, thread_k in dace.map[0: CTAtileN, 0: CTAtileM, 0:CTAtileK]: # thread parallel
-                n =  dace.int32((cta_m+thread_m)/d_DHW)
-                nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)
-                o = dace.int32(nopq_residual/d_HW)
-                opq_residual = dace.int32(nopq_residual%d_HW)
-                p = dace.int32(opq_residual/d_outwidth)
-                q = dace.int32(opq_residual%d_outwidth)
+            for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]:
+                for gemm_m in range(0, WARPtileM): 
+                    for gemm_n in dace.map[0: WARPtileN]@dace.ScheduleType.Sequential:
+                        cta_reducedk[warp_m+gemm_m, warp_n+gemm_n] = 0
 
-                c = dace.int32((cta_k+thread_k)/d_kdim3)
-                ctrs_residual = dace.int32((cta_k+thread_k)%d_kdim3)
-                t = dace.int32(ctrs_residual/d_kdim2)
-                trs_residual = dace.int32(ctrs_residual%d_kdim2)
-                r = dace.int32(trs_residual/d_kdim)
-                s = dace.int32(trs_residual%d_kdim)
-                d, h, w = o + t, p + r, q + s
-                cta_input[thread_m, thread_k] = Input[n, d, h, w, c]
-                cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
+            for cta_k in range(0, d_GEMM_K, CTAtileK):
+                cta_input = torch.ones(CTAtileM, CTAtileK).cuda()
+                cta_kernel = torch.ones(CTAtileK, CTAtileN).cuda()
 
-            nthread_n = dace.int32(CTAtileN/WARPtileN)
-            nthread_m = dace.int32(CTAtileM/WARPtileM)
-            tmpCTA = torch.ones(nthread_n, nthread_m, WARPtileM, WARPtileN).cuda()
-            for thread_x, thread_y in dace.map[0:nthread_n, 0:nthread_m]:
-                for x in range(0, WARPtileM):
-                    for y in range(0, WARPtileN):
-                        tmpCTA[thread_x, thread_y, x, y] = 0
+                for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]:
+                    for warp_k in range(0,CTAtileK,WARPtileK):
+                        for gemm_k in range(0, WARPtileK):
+                            for gemm_m in range(0, WARPtileM): 
+                                for gemm_n in dace.map[0: WARPtileN]:
+                                    n, nopq_residual =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
+                                    o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)
+                                    p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
 
-            for thread_n, thread_m in dace.map[0: CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]:
-                warp_reducedk = torch.zeros(WARPtileM, WARPtileN).cuda()
+                                    c, ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3), dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
+                                    t, trs_residual = dace.int32(ctrs_residual/d_kdim2), dace.int32(ctrs_residual%d_kdim2)
+                                    r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
+                                    d, h, w = o + t, p + r, q + s
 
-                for thread_k in range(0, CTAtileK, WARPtileK):
-                    for gemm_k in range(0, WARPtileK):
+                                    cta_input[warp_m + gemm_m, warp_k + gemm_k] = Input[n, d, h, w, c]
+                                    cta_kernel[warp_k + gemm_k, warp_n + gemm_n] = kernel[gemm_n+cta_n+warp_n, t, r, s, c]
+
+                for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]:
+                        warp_reducedk = torch.ones(WARPtileM, WARPtileK).cuda()
+                        for gemm_m in range(0, WARPtileM):
+                            for gemm_n in dace.map[0: WARPtileN]@dace.ScheduleType.Sequential:
+                                warp_reducedk[gemm_m, gemm_n] = 0
+                        for warp_k in range(0,CTAtileK,WARPtileK):
+                            warp_input = torch.ones(WARPtileM, WARPtileK).cuda()
+                            warp_kernel = torch.ones(WARPtileK, WARPtileN).cuda()
+                            for gemm_k in range(0, WARPtileK):
+                                for gemm_m in range(0, WARPtileM): 
+                                    for gemm_n in dace.map[0: WARPtileN]:
+                                        
+                                        # TODO: Fix the writes in this part. There is some weird overlap happening here.
+                                        warp_input[gemm_m, gemm_k] = cta_input[warp_m + gemm_m, warp_k + gemm_k]
+                                        warp_kernel[gemm_k, gemm_n] = cta_kernel[warp_k + gemm_k, warp_n + gemm_n]
+
+                            for gemm_k in range(0, WARPtileK):
+                                for gemm_m in range(0, WARPtileM): 
+                                    for gemm_n in dace.map[0: WARPtileN]:
+                                        n, nopq_residual =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW), dace.int32((gemm_m+cta_m+warp_m) % d_DHW)
+                                        o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)
+                                        p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+
+                                        c, ctrs_residual  = dace.int32((gemm_k+cta_k+warp_k)/d_kdim3), dace.int32((gemm_k+cta_k+warp_k)%d_kdim3)
+                                        t, trs_residual = dace.int32(ctrs_residual/d_kdim2), dace.int32(ctrs_residual%d_kdim2)
+                                        r, s = dace.int32(trs_residual/d_kdim), dace.int32(trs_residual%d_kdim)
+                                        d, h, w = o + t, p + r, q + s
+                                        # TODO: Fix the writes to warp_reducedk. It is causing some overwrites
+                                        warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + warp_input[gemm_m, gemm_k]*warp_kernel[gemm_k, gemm_n]
+                                                
+                        for tmp_m in range(0, WARPtileM):
+                            for tmp_n in range(0, WARPtileN):
+                                cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] = cta_reducedk[tmp_m+warp_m, warp_n+tmp_n] + warp_reducedk[tmp_m, tmp_n]
+
+            for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
+                    for gemm_m in range(0, WARPtileM):
                         for gemm_n in range(0, WARPtileN):
-                            for gemm_m in range(0, WARPtileM):
-                                warp_reducedk[gemm_m, gemm_n] = warp_reducedk[gemm_m, gemm_n] + cta_input[thread_m+gemm_m, thread_k+gemm_k]*cta_kernel[thread_k+gemm_k, thread_n+gemm_n]
-                ithread_n = dace.int32(thread_n/WARPtileN)
-                ithread_m = dace.int32(thread_m/WARPtileM)
-                for tmp_m, tmp_n in dace.map[0: WARPtileM, 0:WARPtileN]:
-                    tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] = tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n] + warp_reducedk[tmp_m, tmp_n]
-            for thread_n, thread_m in dace.map[0:CTAtileN, 0:CTAtileM]:
-                ithread_n = dace.int32(thread_n/WARPtileN)
-                tmp_n = dace.int32(thread_n%WARPtileN)
-                ithread_m = dace.int32(thread_m/WARPtileM)
-                tmp_m = dace.int32(thread_m%WARPtileM)
-                
-                cta_reducedk[thread_m, thread_n] = cta_reducedk[thread_m, thread_n] + tmpCTA[ithread_n, ithread_m, tmp_m, tmp_n]
-        
-        for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]: # Write to output array
-            n = dace.int32((cta_m+thread_m)/d_DHW)
-            nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)
-            o = dace.int32(nopq_residual/d_HW)
-            opq_residual = dace.int32(nopq_residual%d_HW)        
-            p = dace.int32(opq_residual/d_outwidth)
-            q =  dace.int32(opq_residual%d_outwidth)
-            Output[ n, o, p, q, cta_n+thread_n] = cta_reducedk[thread_m, thread_n]
-                        
+                            n, nopq_residual = dace.int32((cta_m+gemm_m+warp_m)/d_DHW), dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
+                            o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
+                            p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
+                            Output[ n, o, p, q, cta_n+gemm_n+warp_n] = cta_reducedk[gemm_m+warp_m, gemm_n+warp_n]
+
+
+
 layout = 'NDHWC'
 imgemm_input = torch.rand(batchsize, indepth, inheight, inwidth, inchannels).cuda()
 imgemm_kernel = torch.rand(outchannels, kdim, kdim, kdim, inchannels).cuda()

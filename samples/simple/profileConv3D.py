@@ -193,7 +193,7 @@ for layern in range(currlayer, lastlayer):
         outwidth = np.int32(inwidth - kdim + 1)
         
         layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
-        print(f'INFO: NCDHW layout {layer_name}') 
+        print(f'INFO: {layout} layout {layer_name}') 
         layer_names.append(layer_name)
 
         cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
@@ -213,7 +213,7 @@ for layern in range(currlayer, lastlayer):
             if(diff<=1e-4): #TODO: Check if the threshold should be reduced
                 print(f"Verification successfull")
             else:
-                sys.exit("!!! ERROR: Incorrect verification")
+                sys.exit(f"!!! ERROR: Incorrect verification layer number {layern}")
 
         # Profiling pytorch using run
         if runtorch:
