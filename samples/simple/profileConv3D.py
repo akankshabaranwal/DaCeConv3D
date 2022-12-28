@@ -82,6 +82,9 @@ selectMethod = args.implementation
 if selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
     layout = 'NCDHW'
+elif selectMethod == 'implicitGemmNCDHWdace':
+    from implicitGemmNCDHWdace import *
+    layout = 'NCDHW'
 elif selectMethod == 'directConvNDHWCdace':
     from directConvNDHWCdace import *
     layout = 'NDHWC'
