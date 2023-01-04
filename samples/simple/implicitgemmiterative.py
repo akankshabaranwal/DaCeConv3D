@@ -7,16 +7,46 @@ import libcudnn
 import pycuda.autoinit
 from pycuda import gpuarray
 
-inchannels = 4
-indepth = 10
-inheight = 10
-inwidth = 10
-outchannels = 4
+# inchannels = 4
+# indepth = 10
+# inheight = 10
+# inwidth = 10
+# outchannels = 4
+# kdim = 3
+# # Iteratively tiling the implicit gemm formulation
+# CTAtileM = 4
+# CTAtileN = 4
+# CTAtileK = 2
+
+# WARPtileM = 2
+# WARPtileN = 2
+# WARPtileK = 1
+
+# nsplitK = 2
+
+inchannels = 256
+indepth = 4
+inheight = 4
+inwidth = 4
+outchannels = 256
 kdim = 3
+# Iteratively tiling the implicit gemm formulation
+CTAtileM = 1
+CTAtileN = 32
+CTAtileK = 4
+
+WARPtileM = 1
+WARPtileN = 16
+WARPtileK = 1
+
+nsplitK = 2
+
 outdepth = indepth - kdim + 1
 outheight = inheight - kdim + 1
 outwidth = inheight - kdim + 1
 batchsize = 1
+
+
 pad = 0
 stride = 1
 dil = 1
@@ -35,16 +65,7 @@ outwidth = np.int32(outwidth)
 # Initializing cudnn
 conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
 
-# Iteratively tiling the implicit gemm formulation
-CTAtileM = 4
-CTAtileN = 4
-CTAtileK = 2
 
-WARPtileM = 2
-WARPtileN = 2
-WARPtileK = 1
-
-nsplitK = 2
 
 def dace_conv3d(Input, kernel, Output):
     d_batchsize = batchsize
@@ -120,13 +141,12 @@ def dace_conv3d(Input, kernel, Output):
         for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]:
             for gemm_n, gemm_m in dace.map[0:WARPtileN, 0:WARPtileM]:
                 tmp = 0
+                n, nopq_residual = dace.int32((cta_m+gemm_m+warp_m)/d_DHW), dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
+                o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
+                p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
                 for isplit_k in dace.map[0:nsplitK]:
-                    n, nopq_residual = dace.int32((cta_m+gemm_m+warp_m)/d_DHW), dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
-                    o, opq_residual = dace.int32(nopq_residual/d_HW), dace.int32(nopq_residual%d_HW)        
-                    p, q = dace.int32(opq_residual/d_outwidth), dace.int32(opq_residual%d_outwidth)
                     tmp = tmp + splitOutput[ isplit_k, n, cta_n+gemm_n+warp_n, o, p, q ]
                 Output[ n, cta_n+gemm_n+warp_n, o, p, q ] = tmp 
-
 
 imgemm_input = torch.rand(batchsize, inchannels, indepth, inheight, inwidth).cuda()
 imgemm_kernel = torch.rand(outchannels, inchannels, kdim, kdim, kdim).cuda()

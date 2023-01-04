@@ -85,6 +85,9 @@ if selectMethod == 'directConvNCDHWdace':
 elif selectMethod == 'implicitGemmNCDHWdace':
     from implicitGemmNCDHWdace import *
     layout = 'NCDHW'
+elif selectMethod == 'implicitGemmsplitKdace':
+    from implicitGemmsplitKdace import *
+    layout = 'NCDHW'
 elif selectMethod == 'directConvNDHWCdace':
     from directConvNDHWCdace import *
     layout = 'NDHWC'
