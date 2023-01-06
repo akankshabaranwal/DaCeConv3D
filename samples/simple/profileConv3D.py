@@ -109,7 +109,6 @@ else:
 import math
 import time
 
-#outdir = f'./outputplots/{selectMethod}_out'
 outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
 if not os.path.exists(outdir):
     os.mkdir(outdir)
