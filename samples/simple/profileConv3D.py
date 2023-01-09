@@ -94,6 +94,9 @@ elif selectMethod == 'directConvNDHWCdace':
 elif selectMethod == 'directConvNCDHWtileddace':
     from directConvNCDHWtileddace import *
     layout = 'NCDHW'
+elif selectMethod == 'directConvNDHWCtileddace':
+    from directConvNDHWCtileddace import *
+    layout = 'NDHWC'
 elif selectMethod == 'implicitGemmdace':
     from implicitGemmdace import *
     layout = 'NDHWC'
