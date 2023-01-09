@@ -51,12 +51,16 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 CTAtileDHW = 64 # This should be min [sqrt(Ss), dhw] 64, 32, 16 works for layers 0 to 5; 8 works for layer 6
 CTAtileOC = 16 # This should be min [sqrt(Ss), OC] 16 works for layers 0 to 7; 32 doesn't work for anything
-CTAtileIC = 2 # The formula for this from soap analysis is 81*d_batchsize*d_inchannels*d_outchannels*d_outdepth*d_outheight*d_outwidth/(Ss*p)
+CTAtileIC = 4 # The formula for this from soap analysis is 81*d_batchsize*d_inchannels*d_outchannels*d_outdepth*d_outheight*d_outwidth/(Ss*p)
+# Nothing works for layer 0
+# 16 works for layer 1 to 6
+# 32 doesn't work
+ 
 
 # This is also limited by IC, especially for the first layer.
-#WARPtileDHW = 1
-#WARPtileOC = 1
-#WARPtileIC = 1
+WARPtileDHW = 4
+WARPtileOC = 2
+WARPtileIC = 1
 
 batchsize = 16
 kdim = 3
@@ -99,9 +103,32 @@ def dace_conv3d( Input: dtype[d_batchsize,  d_inchannels, d_outdepth+d_kdim-1, d
     #             Output[cta_n, cta_oc+oc, d, h, w] = cta_output[oc, dhw]
 
     for n, cta_dhw, cta_oc in dace.map[0:d_batchsize, 0:d_DHW:CTAtileDHW, 0:d_outchannels:CTAtileOC]@dace.ScheduleType.GPU_Device:
-        for ic in 
+
+        cta_output = dace.ndarray([CTAtileOC, CTAtileDHW], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
+
+        for dhw, oc in dace.map[0:CTAtileDHW, 0:CTAtileOC]@dace.ScheduleType.GPU_ThreadBlock:
+            cta_output[oc, dhw] = 0
+
+        for cta_ic in dace.map[0:d_inchannels:CTAtileIC]@dace.ScheduleType.Sequential:
+            cta_input = dace.ndarray([CTAtileIC, CTAtileDHW, kdim, kdim, kdim], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
+            cta_kernel = dace.ndarray([CTAtileOC, CTAtileIC, kdim, kdim, kdim], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
+
+            for dhw, oc in dace.map[0:CTAtileDHW, 0:CTAtileOC]@dace.ScheduleType.GPU_ThreadBlock:
+                for ic in dace.map[0:CTAtileIC]@dace.ScheduleType.Sequential:
+                    d, dhw_residual = dace.int32((cta_dhw+dhw)/d_HW), dace.int32((cta_dhw+dhw)%d_HW)
+                    h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)
+                    for kd, kh, kw in dace.map[0:d_kdim, 0:d_kdim, 0:d_kdim]@dace.ScheduleType.Sequential:
+                        cta_input[ic, dhw, kd, kh, kw] = Input[ n, cta_ic+ic, d+kd, h+kh, w+kw]
+                        cta_kernel[oc, ic, kd, kh, kw] = kernel[cta_oc+oc, cta_ic+ic, kd, kh, kw]
+
+            for dhw, oc in dace.map[0:CTAtileDHW, 0:CTAtileOC]@dace.ScheduleType.GPU_ThreadBlock:
+                for ic in dace.map[0:CTAtileIC]@dace.ScheduleType.Sequential:
+                    d, dhw_residual = dace.int32((cta_dhw+dhw)/d_HW), dace.int32((cta_dhw+dhw)%d_HW)
+                    h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)
+                    for kd, kh, kw in dace.map[0:d_kdim, 0:d_kdim, 0:d_kdim]@dace.ScheduleType.Sequential:
+                        cta_output[oc, dhw] = cta_output[oc, dhw] + cta_input[ic, dhw, kd, kh, kw]*cta_kernel[oc, ic, kd, kh, kw]
+            
         for dhw, oc in dace.map[0:CTAtileDHW, 0:CTAtileOC]@dace.ScheduleType.GPU_ThreadBlock:
             d, dhw_residual = dace.int32((cta_dhw+dhw)/d_HW), dace.int32((cta_dhw+dhw)%d_HW)
             h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)
-            for ic, kd, kh, kw in dace.map[0:d_inchannels, 0:d_kdim, 0:d_kdim, 0:d_kdim]@dace.ScheduleType.Sequential:
-                Output[n, cta_oc+oc, d, h, w] = Output[n, cta_oc+oc, d, h, w] + Input[ n, ic, d+kd, h+kh, w+kw]*kernel[cta_oc+oc, ic, kd, kh, kw]
+            Output[n, cta_oc+oc, d, h, w] = cta_output[oc, dhw]
