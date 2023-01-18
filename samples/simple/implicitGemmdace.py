@@ -34,13 +34,13 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
     # Apply GPU transformation
-    sdfg.apply_transformations(MapReduceFusion)
-    sdfg.apply_gpu_transformations()
+    #sdfg.apply_transformations(MapReduceFusion)
+    #sdfg.apply_gpu_transformations()
     
-    entry_i = find_map_by_param(sdfg, 'gemm_i')
-    xfutil.tile(sdfg, entry_i, False, False, gemm_i=64, gemm_j=16) # CTA tiling Old values: 64,16 
-    entry_k = find_map_by_param(sdfg, 'gemm_k')
-    xfutil.tile(sdfg, entry_k, False, False, gemm_k=8) # CTA tiling Old values: 64,16
+    #entry_i = find_map_by_param(sdfg, 'gemm_i')
+    #xfutil.tile(sdfg, entry_i, False, False, gemm_i=64, gemm_j=16) # CTA tiling Old values: 64,16 
+    #entry_k = find_map_by_param(sdfg, 'gemm_k')
+    #xfutil.tile(sdfg, entry_k, False, False, gemm_k=8) # CTA tiling Old values: 64,16
     #xfutil.tile(sdfg, entry_i, False, False, gemm_i=8, gemm_j=4) # Warp tiling Old values: 8, 4
 
     # # Collapse tiled gemm_i and gemm_j maps

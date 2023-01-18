@@ -79,8 +79,8 @@ torch.cuda.empty_cache()
 # Set the dace implementation to run
 selectMethod = args.implementation
 
-if selectMethod == 'directConvNCDHWdace':
-    from directConvNCDHWdace import *
+if selectMethod == 'implicitGemmNCDHWmatmul':
+    from implicitGemmNCDHWmatmul import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWdace':
     from implicitGemmNCDHWdace import *
@@ -88,23 +88,20 @@ elif selectMethod == 'implicitGemmNCDHWdace':
 elif selectMethod == 'implicitGemmsplitKdace':
     from implicitGemmsplitKdace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCdace':
-    from directConvNDHWCdace import *
-    layout = 'NDHWC'
-elif selectMethod == 'directConvNCDHWtileddace':
+elif selectMethod == 'directConvNCDHWnobuffer': # Fast code with no buffers
+    from directConvNCDHWnobuffer import *
+    layout = 'NCDHW'
+elif selectMethod == 'directConvNCDHWtileddace': # Slow code with explicit buffers
     from directConvNCDHWtileddace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCtileddace':
-    from directConvNDHWCtileddace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmdace':
-    from implicitGemmdace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmTileddace':
-    from implicitGemmTileddace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmWarpTileddace':
-    from implicitGemmWarpTileddace import *
+elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
+    from directConvNCDHWmergeddace import *
+    layout = 'NCDHW'
+elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg optimization
+    from directConvNCDHWzerodace import *
+    layout = 'NCDHW'
+elif selectMethod == 'directConvNDHWCzerodace': # Code with naive merge and sdfg optimization
+    from directConvNDHWCzerodace import *
     layout = 'NDHWC'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")

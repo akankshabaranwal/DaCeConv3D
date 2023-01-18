@@ -45,22 +45,22 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 
 # Distribute computation along GEMM_M, GEMM_N 
-CTAtileM = 128
-CTAtileN = 32
-CTAtileK = 4
+CTAtileM = 64
+CTAtileN = 64
+CTAtileK = 8
 
-WARPtileM = 2
-WARPtileN = 16
+WARPtileM = 4
+WARPtileN = 8
 WARPtileK = 1
 
-nsplitK = 4
+nsplitK = 8 # nsplitK = 8 works best for the last layer
 
 # # Tile sizes for the epilogue
-eCTAtileM = 128
-eCTAtileN = 32
+#eCTAtileM = 128
+#eCTAtileN = 32
 
-eWARPtileM = 2
-eWARPtileN = 16
+#eWARPtileM = 2
+#eWARPtileN = 16
 
 # Best perf is with below for the first layer
 '''
@@ -98,7 +98,7 @@ WARPtileK = 1
 # Assertion for shared memory 
 assert((CTAtileM * CTAtileN + CTAtileM * CTAtileK + CTAtileN*CTAtileK)*4 < 81920)
 # Assertion for thread size
-assert(np.int32((CTAtileM/WARPtileM)*(CTAtileN/WARPtileN)*(CTAtileK/WARPtileK))<1024)
+#assert(np.int32((CTAtileM/WARPtileM)*(CTAtileN/WARPtileN)*(CTAtileK/WARPtileK))<1024)
 
 
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
@@ -114,9 +114,8 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
     d_kdim3 = d_kdim*d_kdim*d_kdim
     d_kdim2 = d_kdim*d_kdim
 
-    #splitGemm = dace.ndarray([nsplitK, d_outchannels, d_batchsize*d_outdepth*d_outheight*d_outwidth], dtype=Input.dtype, storage=dace.StorageType.GPU_Global)
     splitGemm = dace.ndarray([nsplitK, d_outchannels, d_batchsize*d_outdepth*d_outheight*d_outwidth], dtype=Input.dtype, storage=dace.StorageType.GPU_Global)
-    for cta_n, cta_m, isplit_k in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM, 0:nsplitK] @dace.ScheduleType.GPU_Device:
+    for isplit_k, cta_n, cta_m in dace.map[0:nsplitK, 0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM] @dace.ScheduleType.GPU_Device:
             cta_reducedk = dace.ndarray([CTAtileN, CTAtileM], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 for gemm_n, gemm_m in dace.map[0:WARPtileN, 0:WARPtileM]@dace.ScheduleType.Sequential:
@@ -174,30 +173,13 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
 
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 for gemm_n, gemm_m in dace.map[0:WARPtileN, 0:WARPtileM]@dace.ScheduleType.Sequential:
-
-                    n =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW)
-                    nopq_residual = dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
-                    
-                    o = dace.int32(nopq_residual/d_HW)
-                    opq_residual = dace.int32(nopq_residual%d_HW)        
-                    
-                    p = dace.int32(opq_residual/d_outwidth)
-                    q = dace.int32(opq_residual%d_outwidth)
                     splitGemm[isplit_k, cta_n+gemm_n+warp_n, cta_m+gemm_m+warp_m] = cta_reducedk[gemm_n+warp_n, gemm_m+warp_m]
     
     for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM] @dace.ScheduleType.GPU_Device:
-        for warp_n, warp_m in dace.map[0: eCTAtileN:eWARPtileN, 0: eCTAtileM:eWARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
-                warp_readk = dace.ndarray([nsplitK, eWARPtileN, eWARPtileM], dtype=Input.dtype, storage=dace.StorageType.Register)
-                for gemm_n, gemm_m in dace.map[0:eWARPtileN, 0:eWARPtileM]@dace.ScheduleType.Sequential:
+        for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM:WARPtileM]@dace.ScheduleType.GPU_ThreadBlock:
+                warp_readk = dace.ndarray([nsplitK, WARPtileN, WARPtileM], dtype=Input.dtype, storage=dace.StorageType.Register)
+                for gemm_n, gemm_m in dace.map[0:WARPtileN, 0:WARPtileM]@dace.ScheduleType.Sequential:
                     for isplit_k in dace.map[0:nsplitK]@dace.ScheduleType.Sequential:
-                        n =  dace.int32((gemm_m+cta_m+warp_m)/d_DHW)
-                        nopq_residual = dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
-                        
-                        o = dace.int32(nopq_residual/d_HW)
-                        opq_residual = dace.int32(nopq_residual%d_HW)        
-                        
-                        p = dace.int32(opq_residual/d_outwidth)
-                        q = dace.int32(opq_residual%d_outwidth)
                         warp_readk[isplit_k, gemm_n, gemm_m] = splitGemm[isplit_k, cta_n+gemm_n+warp_n, cta_m+gemm_m+warp_m]
       
                 for gemm_n, gemm_m in dace.map[0:WARPtileN, 0:WARPtileM]@dace.ScheduleType.Sequential:
@@ -207,7 +189,7 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                         nopq_residual = dace.int32((cta_m+gemm_m+warp_m) % d_DHW)
                             
                         o = dace.int32(nopq_residual/d_HW)
-                        opq_residual = dace.int32(nopq_residual%d_HW)        
+                        opq_residual = dace.int32(nopq_residual%d_HW)      
                             
                         p = dace.int32(opq_residual/d_outwidth)
                         q = dace.int32(opq_residual%d_outwidth)
