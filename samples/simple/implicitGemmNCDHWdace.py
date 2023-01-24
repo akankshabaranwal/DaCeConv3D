@@ -96,6 +96,9 @@ WARPtileK = 1
 # Assertion for thread size
 #assert(np.int32((CTAtileM/WARPtileM)*(CTAtileN/WARPtileN)*(CTAtileK/WARPtileK))<1024)
 
+# Improve the index computation stuff. Change division to multiplication.
+# Change the modulo to something else.
+# Change the indices so that the smallest ones like r, s etc. depend on threadIdx.
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
 def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1] @dace.StorageType.GPU_Global,
                 kernel: dtype[d_outchannels, d_inchannels, d_kdim, d_kdim, d_kdim] @dace.StorageType.GPU_Global,
