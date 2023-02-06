@@ -38,8 +38,8 @@ WARPtileDHW = 2
 # 16 works for layer 1 to 6
 # 32 doesn't work
  
-batchsize = 16
-kdim = 3
+# batchsize = 16
+# kdim = 3
 
 # # The one with 32 ms runtime.
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)

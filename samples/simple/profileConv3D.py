@@ -75,7 +75,6 @@ if (verify and compareprof):
 
 torch.cuda.empty_cache()
 
-
 # Set the dace implementation to run
 selectMethod = args.implementation
 
@@ -85,24 +84,30 @@ if selectMethod == 'implicitGemmNCDHWmatmul':
 elif selectMethod == 'implicitGemmNCDHWdace':
     from implicitGemmNCDHWdace import *
     layout = 'NCDHW'
+elif selectMethod == 'implicitGemmNCDHWsoap':
+    from implicitGemmNCDHWsoap import *
+    layout = 'NCDHW'
 elif selectMethod == 'implicitGemmsplitKdace':
     from implicitGemmsplitKdace import *
+    layout = 'NCDHW'
+elif selectMethod == 'directConvNCDHWIOdace':
+    from directConvNCDHWIOdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWnobuffer': # Fast code with no buffers
     from directConvNCDHWnobuffer import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWtileddace': # Slow code with explicit buffers
+elif selectMethod == 'directConvNDHWCtileddace': # Slow code with explicit buffers
+    from directConvNDHWCtileddace import *
+    layout = 'NDHWC'
+elif selectMethod == 'directConvNCDHWtileddace': # Code with naive merge and sdfg optimization
     from directConvNCDHWtileddace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWmergeddace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg optimization
     from directConvNCDHWzerodace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCzerodace': # Code with naive merge and sdfg optimization
-    from directConvNDHWCzerodace import *
-    layout = 'NDHWC'
+elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
+    from directConvNCDHWmergeddace import *
+    layout = 'NCDHW'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
@@ -189,6 +194,7 @@ for layern in range(currlayer, lastlayer):
         layersummary = {}
         t_input = d_input.clone()
         t_kernel = d_kernel.clone()
+        t_output = d_output.clone()
 
         inchannels = np.int32(inchannels)
         indepth = np.int32(indepth)
@@ -199,12 +205,33 @@ for layern in range(currlayer, lastlayer):
         outdepth = np.int32(indepth - kdim + 1)
         outheight = np.int32(inheight - kdim + 1)
         outwidth = np.int32(inwidth - kdim + 1)
+
+        #padInput = (0, 30, 0, 30, 0, 30)
+        # #d_input = F.pad(d_input, padInput, "constant", 0)
+        # #print(d_input.shape)
+        #padKernel = (0, 1, 0, 1, 0, 1)
+        #d_kernel = F.pad(d_kernel, padKernel, "constant", 0)
+        #padOutput = (0, kdim-1, 0, kdim-1, 0, kdim-1)
+        #d_output = F.pad(d_output, padOutput, "constant", 0)
         
+        #desc_kernel = dace.data.Array(dace.float32, [32, 16, 3,3,3], storage=dace.StorageType.GPU_Global, strides=(1,1, 4, 4, 4), total_size=64*32*16)
+        #d_kernel = dace.data.make_array_from_descriptor(desc_kernel,  np.random.rand(32, 16, 3, 3, 3))
+        #inshape = [int(batchsize), int(inchannels), int(indepth), int(inheight), int(inwidth)]
+        #instride = (int(inchannels*indepth*inheight*inwidth), int(indepth*inheight*inwidth), int(inheight*inwidth), int(inwidth), 1)
+        #instride = (int(inchannels*32*32*32), int(32*32*32), int(32*32), int(32), 1)
+        #insize = int(batchsize*indepth*inheight*inwidth*inchannels)
+        
+        #desc_Input = dace.data.Array(dace.float32, inshape, storage=dace.StorageType.GPU_Global, strides=instride, total_size=insize)
+        #d_input = dace.data.make_array_from_descriptor(desc_Input,  np.random.rand(batchsize, inchannels, indepth, inheight, inwidth))
+        
+        #A = dace.data.make_array_from_descriptor(desc_a, np.random.rand(3, 2))
+        #B = dace.data.make_array_from_descriptor(desc_b, np.random.rand(3, 2))
+
         layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
-        print(f'INFO: {layout} layout {layer_name}') 
+        print(f'INFO: {layout} layout {layer_name}')
         layer_names.append(layer_name)
 
-        cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
+        cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
         # Code for verification
         if verify:
@@ -212,7 +239,6 @@ for layern in range(currlayer, lastlayer):
             run_cudnn()
             run_optim_dace()
             d_output = d_output.cpu()
-            #print(d_output)
             dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
 
             diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
