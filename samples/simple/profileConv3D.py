@@ -90,6 +90,9 @@ elif selectMethod == 'implicitGemmNCDHWsoap':
 elif selectMethod == 'implicitGemmsplitKdace':
     from implicitGemmsplitKdace import *
     layout = 'NCDHW'
+elif selectMethod == 'implicitGemmNoIndexdace':
+    from implicitGemmNoIndexdace import *
+    layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
     from directConvNCDHWIOdace import *
     layout = 'NCDHW'
@@ -147,7 +150,6 @@ stride = 1
 
 # Initializing cudnn
 conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
-
 
 ## cudnn variable parameters init, these change across different layers and are called multiple times
 cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
