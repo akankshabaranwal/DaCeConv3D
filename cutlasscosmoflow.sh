@@ -1,0 +1,1 @@
+../cutlass/build/tools/profiler/cutlass_profiler --operation=Conv3d --n=16 --d=128 --h=128 --w=128 --c=1 --k=16 --t=3 --r=3 --s=3 --pad_d=1 --pad_h=1 --pad_w=1 --stride::d=1 --stride::h=1 --stride::w=1 --dilation::d=1 --dilation::h=1 --dilation::w=1 --conv_kind=fprop
