@@ -93,6 +93,9 @@ elif selectMethod == 'implicitGemmsplitKdace':
 elif selectMethod == 'implicitGemmNoIndexdace':
     from implicitGemmNoIndexdace import *
     layout = 'NCDHW'
+elif selectMethod == 'directConvNCDHWdace':
+    from directConvNCDHWdace import *
+    layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
     from directConvNCDHWIOdace import *
     layout = 'NCDHW'
