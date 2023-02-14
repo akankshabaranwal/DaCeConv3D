@@ -152,8 +152,7 @@ def addlabels(x,y):
         y[i] =round(y[i],2)
         plt.text(i,y[i],y[i])
 
-
-def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary):
+def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_ref, layer_names, summary):
     nrow = 2
     ncol = lastlayer-currlayer
     row = 0
@@ -165,8 +164,7 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
         layern = 0
         for layersummary in summary:
             times = layersummary["times"]
-            layer_name = layersummary["layer_name"]
-            d = {'cudnn': pd.Series(times[1]), 'dace': pd.Series(times[0])}
+            d = {'ref': pd.Series(times[1]), 'dace': pd.Series(times[0])}
             df = pd.DataFrame(d)
             if (col==ncol):
                 row = row+1
@@ -174,8 +172,10 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
             if (row==nrow):
                 print("WARNING: Some plots could not be generated")
                 exit()
-            axtorch = sns.violinplot(ax = axes[0, col], y=df["cudnn"], cut=0, color = 'pink')
-            axtorch.set(xlabel=f'{paramscsv}layer{layern}', ylabel='cudnn runtime in ms')
+            
+            axtorch = sns.violinplot(ax = axes[0, col], y=df["ref"], cut=0, color = 'pink')
+            axtorch.set(xlabel=f'{paramscsv}layer{layern}', ylabel='reference runtime in ms')
+
             axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'skyblue')
             axd.set( ylabel=f'dace runtime in ms', xlabel=  f'{paramscsv}layer{layern}')
             layern = layern+1
@@ -186,7 +186,7 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
             data_dace = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[0]}
             df_dace = pd.DataFrame(data_dace)
             layer_name_column = [f'layer{layern}']*totaliter
-            fun_name_column = ['cudnn']*totaliter
+            fun_name_column = ['ref']*totaliter
             data_torch = {'layer_name': layer_name_column, 'fun_name': fun_name_column, 'times': times[1]}
             df_torch = pd.DataFrame(data_torch)
             
@@ -210,19 +210,19 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
         
         plt.cla()
         plt.clf()
-        if len(median_dace) != 0 and len(median_cudnn) !=0:
+        if len(median_dace) != 0 and len(median_ref) !=0:
             print("INFO: Plotting summary graph")
             # set width of bar
             barWidth = 0.2
             fig = plt.subplots(figsize =(12, 8))
             # Set position of bar on X axis
-            br1 = np.arange(len(median_cudnn))
+            br1 = np.arange(len(median_ref))
             br2 = [x + barWidth for x in br1]
             
             # Make the plot
-            plt.bar(br1, median_cudnn, color ='pink', width = barWidth, edgecolor ='grey', label ='cudnn')
+            plt.bar(br1, median_ref, color ='pink', width = barWidth, edgecolor ='grey', label ='reference')
             plt.bar(br2, median_dace, color ='skyblue', width = barWidth, edgecolor ='grey', label ='dace')
-            addlabels(br1, median_cudnn)
+            addlabels(br1, median_ref)
             addlabels(br2, median_dace)
             # Adding Xticks
             plt.xlabel('Variation across different layers', fontweight ='bold', fontsize = 15)
@@ -232,5 +232,5 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
             plt.xticks(rotation=45, ha='right')
             plt.savefig(f'{outdir}/median_runtime', bbox_inches='tight')
 
-        elif len(median_dace)!=0 or len(median_cudnn)!=0:
+        elif len(median_dace)!=0 or len(median_ref)!=0:
             print("!!ERROR: Plotting single function graph is not implemented")

@@ -7,16 +7,20 @@ import statistics
 import sys
 import glob
 
-import pycuda.autoinit
-from pycuda import gpuarray
-import libcudnn
+useCudnn = 0
+
+if(useCudnn):
+    import pycuda.autoinit
+    from pycuda import gpuarray
+    import libcudnn
+    from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
+
 import numpy as np
 from convutils import prepareinputs, parsecsv, run_fun, createsummaryfile, createplots
 import dace
 import torch
 import torch.nn.functional as F
 
-from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 import pandas as pd 
 
 parser = argparse.ArgumentParser(description='Process the input arguments')
@@ -40,7 +44,7 @@ parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set
 parser.add_argument('-lastlayer','--lastlayer', type=int, default=1, help='set number of total iterations')
 parser.add_argument('-currlayer','--currlayer', type=int, default=0, help='set number of total iterations')
 
-parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmTileddace', help='select which implementation to run')
+parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmNCDHWdace', help='select which implementation to run')
 
 # TODO: Check if you can plot and compare different versions of dace optimizations
 # TODO: Automate the roofline analysis plot
@@ -53,10 +57,6 @@ convparams =  parsecsv(paramscsv)
 loadprecompiled = args.loadprecompiled
 verify = args.verify
 compareprof = args.compareprof
-runtorch = False
-rundace = False
-runcudnn = False
-runoptimdace = False
 proftorch = args.proftorch
 profdace = False
 profoptimdace = args.profoptimdace
@@ -117,8 +117,8 @@ elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sd
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
-import math
-import time
+if(useCudnn and layout!='NCDHW'):
+    sys.exit("!!ERROR: Pytorch supports only NCHDW layout")
 
 outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
 if not os.path.exists(outdir):
@@ -151,11 +151,13 @@ pad = 0
 dil = 1
 stride = 1
 
-# Initializing cudnn
-conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
+if(useCudnn):
+    # Initializing cudnn
+    conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
+    # cudnn variable parameters init, these change across different layers and are called multiple times
+    cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
-## cudnn variable parameters init, these change across different layers and are called multiple times
-cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
+ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
 
 if loadprecompiled:
     from dace.sdfg.utils import load_precompiled_sdfg
@@ -166,32 +168,37 @@ else:
     #optim_dace = dace_conv3d
     optim_dace = sdfg_fun.compile()
 
-
-
 # Function call for pytorch 3D conv
 def run_torch():
-    op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
+    ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
+    return ref_op
 
-def run_cudnn():
-    libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_desc, filt_data, 
-                                conv_desc, convolution_algo, ws_data, ws_size.value, 
-                                beta, out_desc, out_data)
+if(useCudnn):
+    def run_cudnn():
+        libcudnn.cudnnConvolutionForward(cudnn_context, alpha, in_desc, in_data, filt_desc, filt_data, 
+                                    conv_desc, convolution_algo, ws_data, ws_size.value, 
+                                    beta, out_desc, out_data)
 
 # Function calls to run the optim dace function
 def run_optim_dace():
     optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,
             d_inchannels=inchannels, d_outdepth=outdepth, d_outheight=outheight,d_outwidth=outwidth, 
             d_outchannels=outchannels, d_batchsize=batchsize, d_kdim=kdim)
-
     
 median_dace = []
 median_cudnn = []
+median_torch = []
 layer_names = []
-csv_columns = ['layer_name','dace_median','cudnn_median']
+if (useCudnn):
+    csv_columns = ['layer_name','dace_median','cudnn_median']
+else:
+    csv_columns = ['layer_name','dace_median','torch_median']
+
 summary = []
 
-# Clearing cudnn variables
-in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+if (useCudnn):
+    # Clearing cudnn variables
+    in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 for layern in range(currlayer, lastlayer):
     for batchsize in batchsizes:
@@ -199,7 +206,6 @@ for layern in range(currlayer, lastlayer):
         layersummary = {}
         t_input = d_input.clone()
         t_kernel = d_kernel.clone()
-        t_output = d_output.clone()
 
         inchannels = np.int32(inchannels)
         indepth = np.int32(indepth)
@@ -211,60 +217,41 @@ for layern in range(currlayer, lastlayer):
         outheight = np.int32(inheight - kdim + 1)
         outwidth = np.int32(inwidth - kdim + 1)
 
-        #padInput = (0, 30, 0, 30, 0, 30)
-        # #d_input = F.pad(d_input, padInput, "constant", 0)
-        # #print(d_input.shape)
-        #padKernel = (0, 1, 0, 1, 0, 1)
-        #d_kernel = F.pad(d_kernel, padKernel, "constant", 0)
-        #padOutput = (0, kdim-1, 0, kdim-1, 0, kdim-1)
-        #d_output = F.pad(d_output, padOutput, "constant", 0)
-        
-        #desc_kernel = dace.data.Array(dace.float32, [32, 16, 3,3,3], storage=dace.StorageType.GPU_Global, strides=(1,1, 4, 4, 4), total_size=64*32*16)
-        #d_kernel = dace.data.make_array_from_descriptor(desc_kernel,  np.random.rand(32, 16, 3, 3, 3))
-        #inshape = [int(batchsize), int(inchannels), int(indepth), int(inheight), int(inwidth)]
-        #instride = (int(inchannels*indepth*inheight*inwidth), int(indepth*inheight*inwidth), int(inheight*inwidth), int(inwidth), 1)
-        #instride = (int(inchannels*32*32*32), int(32*32*32), int(32*32), int(32), 1)
-        #insize = int(batchsize*indepth*inheight*inwidth*inchannels)
-        
-        #desc_Input = dace.data.Array(dace.float32, inshape, storage=dace.StorageType.GPU_Global, strides=instride, total_size=insize)
-        #d_input = dace.data.make_array_from_descriptor(desc_Input,  np.random.rand(batchsize, inchannels, indepth, inheight, inwidth))
-        
-        #A = dace.data.make_array_from_descriptor(desc_a, np.random.rand(3, 2))
-        #B = dace.data.make_array_from_descriptor(desc_b, np.random.rand(3, 2))
-
         layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
         print(f'INFO: {layout} layout {layer_name}')
         layer_names.append(layer_name)
 
-        cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
+        if (useCudnn):
+            cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
 
         # Code for verification
         if verify:
-            print("INFO: Running verification to compare against cudnn output")
-            run_cudnn()
+            if(useCudnn):
+                print("INFO: Running verification to compare against cudnn output")
+            else:
+                print("INFO: Running verification to compare against torch output")
+            if(useCudnn):
+                run_cudnn()
+            else:
+                ref_op = run_torch()
+                
             run_optim_dace()
-            d_output = d_output.cpu()
-            dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
 
-            diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
-            print('Difference between cudnn and dace values:', diff)
+            if(useCudnn):
+                d_output = d_output.cpu()
+                dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
+                diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
+                print('Difference between cudnn and dace values:', diff)
+            else:
+                print(d_output.shape)
+                print(ref_op.shape)
+                diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
 
             if(diff<=1e-4): #TODO: Check if the threshold should be reduced
                 print(f"Verification successfull")
             else:
                 sys.exit(f"!!! ERROR: Incorrect verification layer number {layern}")
 
-        # Profiling pytorch using run
-        if runtorch:
-            run_fun(run_torch, warmupiter, totaliter)
-
-        # Profiling optimized dace using run
-        if runoptimdace:
-            run_fun(run_optim_dace, warmupiter, totaliter)
-
-        # Profiling optimized dace using run
-        if runcudnn:
-            run_fun(run_cudnn, warmupiter, totaliter)
 
         # Comparitive profiling using time funcs
         print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
@@ -272,25 +259,40 @@ for layern in range(currlayer, lastlayer):
         dace_median = []
         torch_median = []
         cudnn_median = []
-        if compareprof:
-            times = time_funcs([run_optim_dace, run_cudnn],
-                            func_names=["dace", "cudnn"],
-                            warmups=warmupiter,
-                            num_iters=totaliter,
-                            launch_wait=setlaunchwait)
-            print_time_statistics(times, [ "dace", "cudnn"])
-            layersummary['layer_name'] = layer_name
-            layersummary['times'] = times
-            layersummary['dace_median'] = statistics.median(times[0])
-            layersummary['cudnn_median'] = statistics.median(times[1])
-            median_dace.append(statistics.median(times[0]))
-            median_cudnn.append(statistics.median(times[1]))
-            dace_median.append(times[0])
-            cudnn_median.append(times[1])
-            summary.append(layersummary)
 
-        dace_median_array = np.array(dace_median)
-        cudnn_median_array = np.array(cudnn_median)
+        if compareprof:
+            if useCudnn:
+                times = time_funcs([run_optim_dace, run_cudnn],
+                                func_names=["dace", "cudnn"],
+                                warmups=warmupiter,
+                                num_iters=totaliter,
+                                launch_wait=setlaunchwait)
+                print_time_statistics(times, [ "dace", "cudnn"])
+                layersummary['layer_name'] = layer_name
+                layersummary['times'] = times
+                layersummary['dace_median'] = statistics.median(times[0])
+                layersummary['cudnn_median'] = statistics.median(times[1])
+                median_dace.append(statistics.median(times[0]))
+                median_cudnn.append(statistics.median(times[1]))
+                dace_median.append(times[0])
+                cudnn_median.append(times[1])
+                summary.append(layersummary)            
+            else:
+                times = time_funcs([run_optim_dace, run_torch],
+                                func_names=["dace", "torch"],
+                                warmups=warmupiter,
+                                num_iters=totaliter,
+                                launch_wait=setlaunchwait)
+                print_time_statistics(times, [ "dace", "torch"])
+                layersummary['layer_name'] = layer_name
+                layersummary['times'] = times
+                layersummary['dace_median'] = statistics.median(times[0])
+                layersummary['torch_median'] = statistics.median(times[1])
+                median_dace.append(statistics.median(times[0]))
+                median_torch.append(statistics.median(times[1]))
+                dace_median.append(times[0])
+                torch_median.append(times[1])
+                summary.append(layersummary)
 
         # run using prof for torch
         if proftorch:
@@ -311,6 +313,8 @@ for layern in range(currlayer, lastlayer):
             print_time_statistics(times, [ "optimdace"])
         
         if profcudnn:
+            if(not(useCudnn)):
+                sys.exit("!!ERROR: Cudnn is not available for non NVIDIA GPUs")
             times = time_funcs([run_cudnn],
                             func_names=["cudnn"],
                             warmups=warmupiter,
@@ -318,12 +322,17 @@ for layern in range(currlayer, lastlayer):
                             launch_wait=setlaunchwait)
             print_time_statistics(times, [ "cudnn"])
         
-        in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+        if(useCudnn):
+            in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 
 createsummaryfile(summary, outdir, csv_columns)
-createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary)
+if(useCudnn):
+    createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary)
+else:
+    createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_torch, layer_names, summary)
 
 # cudnn clear context
-libcudnn.cudnnDestroyConvolutionDescriptor(conv_desc)
-libcudnn.cudnnDestroy(cudnn_context)
+if(useCudnn):
+    libcudnn.cudnnDestroyConvolutionDescriptor(conv_desc)
+    libcudnn.cudnnDestroy(cudnn_context)
