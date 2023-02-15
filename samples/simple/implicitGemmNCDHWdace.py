@@ -57,7 +57,7 @@ CTAtileN = 16
 CTAtileK = 1
 
 WARPtileM = 2
-WARPtileN = 16
+WARPtileN = 4
 
 # Best perf is with below for the first layer
 '''

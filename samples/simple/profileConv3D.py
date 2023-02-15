@@ -15,6 +15,7 @@ if(useCudnn):
     import libcudnn
     from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
 
+from dace.sdfg.utils import load_precompiled_sdfg
 import numpy as np
 from convutils import prepareinputs, parsecsv, run_fun, createsummaryfile, createplots
 import dace
@@ -160,8 +161,8 @@ if(useCudnn):
 ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
 
 if loadprecompiled:
-    from dace.sdfg.utils import load_precompiled_sdfg
-    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/dacelocal/.dacecache/{selectMethod}_dace_conv3d')
+
+    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/{selectMethod}_dace_conv3d')
 else:    
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
     optimize_for_gpu(sdfg_fun)
@@ -234,7 +235,7 @@ for layern in range(currlayer, lastlayer):
                 run_cudnn()
             else:
                 ref_op = run_torch()
-                
+
             run_optim_dace()
 
             if(useCudnn):
@@ -243,8 +244,6 @@ for layern in range(currlayer, lastlayer):
                 diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
                 print('Difference between cudnn and dace values:', diff)
             else:
-                print(d_output.shape)
-                print(ref_op.shape)
                 diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
 
             if(diff<=1e-4): #TODO: Check if the threshold should be reduced
@@ -276,7 +275,7 @@ for layern in range(currlayer, lastlayer):
                 median_cudnn.append(statistics.median(times[1]))
                 dace_median.append(times[0])
                 cudnn_median.append(times[1])
-                summary.append(layersummary)            
+                summary.append(layersummary)
             else:
                 times = time_funcs([run_optim_dace, run_torch],
                                 func_names=["dace", "torch"],
