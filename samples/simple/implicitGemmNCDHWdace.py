@@ -5,6 +5,8 @@ from dace.transformation.interstate import StateFusion
 from dace.transformation.dataflow import TaskletFusion, MapReduceFusion, InLocalStorage
 from convutils import find_map_by_param
 
+from dace.config import Config
+
 # Define symbolic sizes for arbitrary inputs
 d_outdepth = dace.symbol('d_outdepth')
 d_outheight = dace.symbol('d_outheight')

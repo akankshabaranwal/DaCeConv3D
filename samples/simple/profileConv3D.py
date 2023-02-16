@@ -47,9 +47,8 @@ parser.add_argument('-currlayer','--currlayer', type=int, default=0, help='set n
 
 parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmNCDHWdace', help='select which implementation to run')
 
-# TODO: Check if you can plot and compare different versions of dace optimizations
-# TODO: Automate the roofline analysis plot
-# FIXME: Something is wrong with subplot when the csv file has just one row  
+# TODO: Something is wrong with subplot when the csv file has just one row
+# TODO: Fix code to schmoo different tile sizes more easily
 
 args = parser.parse_args()
 
