@@ -52,12 +52,12 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 # WARPtileN = 8
 
 CTAtileM = 64
-CTAtileN = 32
+CTAtileN = 16
 
-CTAtileK = 4
+CTAtileK = 1
 
 WARPtileM = 2
-WARPtileN = 32
+WARPtileN = 16
 
 # Best perf is with below for the first layer
 '''
@@ -100,6 +100,9 @@ WARPtileK = 1
 # Improve the index computation stuff. Change division to multiplication.
 # Change the modulo to something else.
 # Change the indices so that the smallest ones like r, s etc. depend on threadIdx.
+
+
+# Last best performing has a runtime of 40.65 ms. 
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
 def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1] @dace.StorageType.GPU_Global,
                 kernel: dtype[d_outchannels, d_inchannels, d_kdim, d_kdim, d_kdim] @dace.StorageType.GPU_Global,

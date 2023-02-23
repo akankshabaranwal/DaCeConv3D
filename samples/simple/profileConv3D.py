@@ -114,6 +114,9 @@ elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg
 elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
     from directConvNCDHWmergeddace import *
     layout = 'NCDHW'
+elif selectMethod == 'optimizeconv': # Code following cutlass guidelines
+    from optimizeconv import *
+    layout = 'NDHWC'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
