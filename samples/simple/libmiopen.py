@@ -178,3 +178,111 @@ def miopenGetConvolutionNdForwardOutputDim(convDesc, inputTensorDesc, wDesc, ten
     outdims = np.ctypeslib.as_array(outdims_arr)
     miopenCheckStatus(status)
     return outdims
+
+
+_libmiopen.miopenConvolutionForwardGetWorkSpaceSize.restype = int
+_libmiopen.miopenConvolutionForwardGetWorkSpaceSize.argtypes = [ctypes.c_void_p, #handle
+                                                              ctypes.c_void_p, #filtdesc
+                                                              ctypes.c_void_p, #indesc
+                                                              ctypes.c_void_p, #convdesc
+                                                              ctypes.c_void_p, #outdesc
+                                                              ctypes.c_void_p #size in bytes
+                                                              ]
+def miopenConvolutionForwardGetWorkSpaceSize(handle, wDesc, srcDesc,
+                                            convDesc, destDesc):
+    sizeInBytes = ctypes.c_size_t()
+    status = _libmiopen.miopenConvolutionForwardGetWorkSpaceSize(handle, 
+                                                            wDesc, 
+                                                            srcDesc,
+                                                            convDesc,
+                                                            destDesc,
+                                                            ctypes.byref(sizeInBytes))
+    miopenCheckStatus(status)
+    return sizeInBytes
+
+class miopenConvAlgoPerf(ctypes.Structure):
+    _fields_ = [("fwd_algo", ctypes.c_int),
+                ("time", ctypes.c_float),
+                ("memory", ctypes.c_size_t)]
+    def __str__(self):
+        return '(algo=%d, time=%f, memory=%d)' % (self.algo, self.time, self.memory)
+    def __repr__(self):
+        return self.__str__()
+    
+_libmiopen.miopenFindConvolutionForwardAlgorithm.restype = int
+_libmiopen.miopenFindConvolutionForwardAlgorithm.argtypes = [ctypes.c_void_p, # Handle
+                                                              ctypes.c_void_p, # In Desc
+                                                              ctypes.c_void_p, # In Data
+                                                              ctypes.c_void_p, # Filt Desc
+                                                              ctypes.c_void_p, # Filt Data
+                                                              ctypes.c_void_p, # Conv Desc
+                                                              ctypes.c_void_p, # Output Desc
+                                                              ctypes.c_void_p, # Output Data
+                                                              ctypes.c_int, #requestAlgoCount
+                                                              ctypes.c_void_p, #returnedAlgoCount
+                                                              ctypes.c_void_p, # perfresults
+                                                              ctypes.c_void_p, # search_ws
+                                                              ctypes.c_size_t, # ws_size
+                                                              ctypes.c_bool # true or false
+                                                              ] 
+def miopenFindConvolutionForwardAlgorithm(handle, 
+                                        srcDesc, srcData, 
+                                        wDesc, wData, 
+                                        convDesc, 
+                                        destDesc, destData,
+                                        requestedAlgoCount, workspace,
+                                        ws_size):
+    perfResultsType = miopenConvAlgoPerf * requestedAlgoCount
+    perfResults = perfResultsType()
+    returnedAlgoCount = ctypes.c_int()
+    status = _libmiopen.miopenFindConvolutionForwardAlgorithm(handle,
+                                                            srcDesc, 
+                                                            srcData,
+                                                            wDesc, 
+                                                            wData,
+                                                            convDesc, 
+                                                            destDesc, 
+                                                            destData,
+                                                            ctypes.c_int(requestedAlgoCount),
+                                                            ctypes.byref(returnedAlgoCount),
+                                                            ctypes.cast(perfResults, ctypes.POINTER(miopenConvAlgoPerf)),
+                                                            workspace,
+                                                            ctypes.c_size_t(ws_size),
+                                                            ctypes.c_bool(True))
+    miopenCheckStatus(status)
+    return perfResults
+
+_libmiopen.miopenConvolutionForward.restype = int
+_libmiopen.miopenConvolutionForward.argtypes = [ctypes.c_void_p, # handle
+                                            ctypes.c_void_p, # alpha
+                                            ctypes.c_void_p, # in desc
+                                            ctypes.c_void_p, # in data
+                                            ctypes.c_void_p, # filt desc
+                                            ctypes.c_void_p, # filt data
+                                            ctypes.c_void_p, # conv desc
+                                            ctypes.c_int, # selected Algo
+                                            ctypes.c_void_p, # beta
+                                            ctypes.c_void_p, # out desc
+                                            ctypes.c_void_p, # out data
+                                            ctypes.c_void_p, # workspace
+                                            ctypes.c_size_t # 
+                                            ]
+
+def miopenConvolutionForward(handle, alpha,
+                             srcDesc, srcData,
+                             wDesc, w,
+                             convDesc, algo, 
+                             beta, destDesc, destData,
+                             workspace, workSpaceSizeInBytes):
+    """
+    """
+    alphaRef = ctypes.byref(ctypes.c_float(alpha))
+    betaRef = ctypes.byref(ctypes.c_float(beta))
+
+    status = _libmiopen.miopenConvolutionForward(handle, alphaRef, 
+                                            srcDesc, srcData,
+                                            wDesc, w,
+                                            convDesc, algo, 
+                                            betaRef, destDesc, destData,
+                                            workspace, ctypes.c_size_t(workSpaceSizeInBytes))
+    miopenCheckStatus(status)

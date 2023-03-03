@@ -12,14 +12,14 @@ data_type = libmiopen.miopenDatatype['miopenFloat']
 tensor_dim = 5
 conv_dim = tensor_dim-2
 convolution_mode = libmiopen.miopenConvolutionMode['miopenConvolution']
-convolution_algo = libmiopen.miopenConvFwdAlgo['miopenConvolutionFwdAlgoImplicitGEMM']
+convolution_algo = libmiopen.miopenConvFwdAlgo['miopenConvolutionFwdAlgoDirect']
 
 # Initializing input data pointer
-in_n = 1
+in_n = 4
 in_c = 1
-in_d = 5
-in_h = 5
-in_w = 5
+in_d = 8
+in_h = 8
+in_w = 8
 in_dims = [in_n, in_c, in_d, in_h, in_w]
 in_strides = [in_c*in_d*in_h*in_w, in_d*in_h*in_w, in_h*in_w, in_w, 1]
 in_desc = libmiopen.miopenCreateTensorDescriptor()
@@ -76,7 +76,7 @@ print("Convolution descriptor created")
 
 # Output descriptor
 outdimsinit = [0, 0, 0, 0, 0]
-tensor_dim = [3]
+tensor_dim = [5]
 outdims = libmiopen.miopenGetConvolutionNdForwardOutputDim(conv_desc, 
                                             in_desc,
                                             filt_desc,
@@ -87,18 +87,44 @@ out_c = outdims[1]
 out_d = outdims[2]
 out_h = outdims[3]
 out_w = outdims[4]
-outstrides = [ outdims[1]*outdims[2]*outdims[3]*outdims[4], outdims[2]*outdims[3]*outdims[4], outdims[3]*outdims[4], outdims[4], 1]
+outstrides = [outdims[1]*outdims[2]*outdims[3]*outdims[4], outdims[2]*outdims[3]*outdims[4], outdims[3]*outdims[4], outdims[4], 1]
+outconvdim = 5
 out_desc = libmiopen.miopenCreateTensorDescriptor()
 libmiopen.miopenSetTensorDescriptor(out_desc,
                                     data_type,
-                                    convdim,
+                                    outconvdim,
                                     outdims, 
                                     outstrides)
 out_bytes = int(out_n*out_c*out_d*out_h*out_w*ctypes.sizeof(ctypes.c_float))
 out_data = libhip.hipMalloc(out_bytes)
+print(outdims)
 print("Output tensor created")
+
 # Find workspace size
+ws_size =  libmiopen.miopenConvolutionForwardGetWorkSpaceSize(miopen_context, 
+                                                        filt_desc,
+                                                        in_desc,
+                                                        conv_desc,
+                                                        out_desc)
 
-# Find optimal algorithm
-
+#Find algorithm to be able to run convolution
+search_ws = libhip.hipMalloc(ws_size)
+requestedalgocount = 1
+perfresult = libmiopen.miopenFindConvolutionForwardAlgorithm(miopen_context, 
+                                                in_desc, in_data,
+                                                filt_desc, filt_data,
+                                                conv_desc, 
+                                                out_desc, out_data,
+                                                requestedalgocount,
+                                                search_ws, ws_size.value
+                                                )
+alpha = 1.0
+beta = 0
 # Run the particular algorithm
+libmiopen.miopenConvolutionForward(miopen_context, alpha,
+                                    in_desc, in_data,
+                                    filt_desc, filt_data,
+                                    conv_desc, convolution_algo,
+                                    beta, out_desc, out_data,
+                                    search_ws, ws_size.value
+                                   )

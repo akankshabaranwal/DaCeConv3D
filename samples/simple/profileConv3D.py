@@ -160,7 +160,6 @@ if(useCudnn):
 ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
 
 if loadprecompiled:
-
     optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/{selectMethod}_dace_conv3d')
 else:    
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)

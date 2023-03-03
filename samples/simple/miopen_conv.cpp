@@ -101,7 +101,12 @@ int main()
 
     size_t ws_size=3355443200;
     
-    CHECK_MIOPEN_ERROR(miopenConvolutionForwardGetWorkSpaceSize(miopen_h, filt_desc, in_desc, conv_desc, out_desc, &ws_size));
+    CHECK_MIOPEN_ERROR(miopenConvolutionForwardGetWorkSpaceSize(miopen_h, 
+                                                            filt_desc, 
+                                                            in_desc, 
+                                                            conv_desc, 
+                                                            out_desc, 
+                                                            &ws_size));
     std::cerr << "Workspace size: " << (ws_size ) << "bytes"<< std::endl;
     
     // Run the find algorithm to get the most optimal algorithm to run.
@@ -124,7 +129,8 @@ int main()
     HIP_ASSERT(hipMalloc(&d_workspace, ws_size));
     const float alpha = 1.0f, beta = 0.0f;
     selectedAlgo = perfResults->fwd_algo;
-    
+    selectedAlgo = miopenConvolutionFwdAlgoImplicitGEMM;
+    std::cout<<perfResults->fwd_algo;
     CHECK_MIOPEN_ERROR(miopenConvolutionForward(miopen_h, &alpha, 
                                                 in_desc, in_data, 
                                                 filt_desc, filt_data,
