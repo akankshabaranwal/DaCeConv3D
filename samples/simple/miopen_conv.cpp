@@ -69,14 +69,23 @@ int main()
     vector<int> convpad = {pad_d, pad_h, pad_w};
     vector<int> filtstr = {str_d, str_h, str_w};
     vector<int> convdil = {dil_d, dil_h, dil_w};
-    CHECK_MIOPEN_ERROR(miopenInitConvolutionNdDescriptor(conv_desc, 3, convpad.data(), filtstr.data(), convdil.data(), c_mode));
+    CHECK_MIOPEN_ERROR(miopenInitConvolutionNdDescriptor(conv_desc, 
+                                                        3, 
+                                                        convpad.data(), 
+                                                        filtstr.data(), 
+                                                        convdil.data(), 
+                                                        c_mode));
 
     // Get convolution output dimension
     miopenTensorDescriptor_t out_desc;
     CHECK_MIOPEN_ERROR(miopenCreateTensorDescriptor(&out_desc));
     std::vector<int> outdims{0,0,0,0,0};
     int ndim=3;
-    CHECK_MIOPEN_ERROR(miopenGetConvolutionNdForwardOutputDim(conv_desc, in_desc, filt_desc, &ndim, outdims.data()));
+    CHECK_MIOPEN_ERROR(miopenGetConvolutionNdForwardOutputDim(conv_desc, 
+                                                            in_desc, 
+                                                            filt_desc, 
+                                                            &ndim, 
+                                                            outdims.data()));
     int out_n = outdims[0];
     int out_c = outdims[1];
     int out_d = outdims[2];
