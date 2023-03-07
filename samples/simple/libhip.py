@@ -460,3 +460,13 @@ def hipFree(ptr):
 
     status = _libhip.hipFree(ptr)
     hipCheckStatus(status)
+
+
+
+_libhip.hipMemcpyDtoD.restype = int
+_libhip.hipMemcpyDtoD.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
+                              ctypes.c_size_t]
+
+def hipMemcpyDtoD(dst, src, count):
+    status = _libhip.hipMemcpyDtoD(dst, src, ctypes.c_size_t(count))
+    hipCheckStatus(status)

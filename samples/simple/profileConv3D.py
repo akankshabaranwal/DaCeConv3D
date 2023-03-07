@@ -8,12 +8,18 @@ import sys
 import glob
 
 useCudnn = 0
+useMIOpen = 1
 
 if(useCudnn):
     import pycuda.autoinit
     from pycuda import gpuarray
     import libcudnn
-    from cudnnConv import cudnn_init, cudnnsetlayerdesc, destroydescinoutfilt
+    from cudnnConv import cudnn_init, cudnnsetlayerdesc, cudnndestroydescinoutfilt
+
+if(useMIOpen):
+    import libmiopen, libhip
+    from miopenConv import miopen_init, miopensetlayerdesc, miopendestroydescinoutfilt
+    from miopenConv import miopen_init
 
 from dace.sdfg.utils import load_precompiled_sdfg
 import numpy as np
@@ -68,7 +74,7 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
-batchsizes = [16]
+batchsizes = [8]
 
 if (verify and compareprof):
     sys.exit("!!! ERROR: Some pycuda context issue when both verif and compareprof are called together")
@@ -117,8 +123,8 @@ elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sd
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
-if(useCudnn and layout!='NCDHW'):
-    sys.exit("!!ERROR: Pytorch supports only NCHDW layout")
+if(not(useCudnn) and layout!='NCDHW'):
+    sys.exit("!!ERROR: Pytorch and MIOpen supports only NCHDW layout")
 
 outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
 if not os.path.exists(outdir):
@@ -136,6 +142,7 @@ d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels
 ## Prepare inputs for pytorch fun
 t_input = d_input.clone()
 t_kernel = d_kernel.clone()
+miopen_output = d_output.clone()
 
 inchannels = np.int32(inchannels)
 indepth = np.int32(indepth)
@@ -156,6 +163,18 @@ if(useCudnn):
     conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
     # cudnn variable parameters init, these change across different layers and are called multiple times
     cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
+
+if(useMIOpen):
+    # Initializing miopen
+    conv_desc, miopen_context, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = miopen_init(pad, stride, dil)
+    # miopen variable parameters init
+    in_desc, in_data, out_desc, out_data, outbytes, outdims, filt_desc, filt_data, ws_size, search_ws, perfResult = miopensetlayerdesc(miopen_context, outdimsinit,
+                                                                                                            conv_desc, d_input, d_kernel,
+                                                                                                            batchsize, kdim, 
+                                                                                                            inchannels, indepth,inheight, inwidth,
+                                                                                                            outchannels, data_type, tensor_dim)
+    convolution_algo = perfResult[0].fwd_algo
+    print(f"Found MIOpen algorithm: {perfResult[0].fwd_algo}")
 
 ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
 
@@ -178,6 +197,16 @@ if(useCudnn):
                                     conv_desc, convolution_algo, ws_data, ws_size.value, 
                                     beta, out_desc, out_data)
 
+if(useMIOpen):
+    def run_miopen():
+        libmiopen.miopenConvolutionForward(miopen_context, alpha,
+                                    in_desc, in_data,
+                                    filt_desc, filt_data,
+                                    conv_desc, convolution_algo,
+                                    beta, out_desc, out_data,
+                                    search_ws, ws_size.value
+                                   )
+
 # Function calls to run the optim dace function
 def run_optim_dace():
     optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,
@@ -189,15 +218,15 @@ median_cudnn = []
 median_torch = []
 layer_names = []
 if (useCudnn):
-    csv_columns = ['layer_name','dace_median','cudnn_median']
+    csv_columns = ['layer_name', 'dace_median', 'cudnn_median']
 else:
-    csv_columns = ['layer_name','dace_median','torch_median']
+    csv_columns = ['layer_name', 'dace_median', 'torch_median']
 
 summary = []
 
 if (useCudnn):
     # Clearing cudnn variables
-    in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+    in_desc, out_desc, filt_desc, ws_ptr = cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 for layern in range(currlayer, lastlayer):
     for batchsize in batchsizes:
@@ -222,15 +251,25 @@ for layern in range(currlayer, lastlayer):
 
         if (useCudnn):
             cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
-
+        if (useMIOpen):
+            in_desc, in_data, out_desc, out_data, outdims, outbytes, filt_desc, filt_data, ws_size, search_ws, perfResult = miopensetlayerdesc(miopen_context, outdimsinit,
+                                                                                                            conv_desc, d_input, d_kernel,
+                                                                                                            batchsize, kdim, 
+                                                                                                            inchannels, indepth,inheight, inwidth,
+                                                                                                            outchannels, data_type, tensor_dim)
+            
         # Code for verification
         if verify:
             if(useCudnn):
                 print("INFO: Running verification to compare against cudnn output")
             else:
                 print("INFO: Running verification to compare against torch output")
+            miopen_output = d_output.clone()
+
             if(useCudnn):
                 run_cudnn()
+            if(useMIOpen):
+                run_miopen()
             else:
                 ref_op = run_torch()
 
@@ -241,9 +280,23 @@ for layern in range(currlayer, lastlayer):
                 dace_output_g = gpuarray.to_gpu(d_output.numpy().astype(np.float32))
                 diff = np.linalg.norm((out_data_g - dace_output_g).get()) / (batchsize * outchannels * outdepth * outheight * outwidth )
                 print('Difference between cudnn and dace values:', diff)
+            
+            if(useMIOpen):
+                libmiopen.miopenConvolutionForward(miopen_context, alpha,
+                                    in_desc, in_data,
+                                    filt_desc, filt_data,
+                                    conv_desc, convolution_algo,
+                                    beta, out_desc, out_data,
+                                    search_ws, ws_size.value
+                                   )
+                miopen_output_ptr = miopen_output.data_ptr()
+                #print(miopen_output)
+                libhip.hipMemcpyDtoD(miopen_output_ptr, out_data, outbytes)
+                diff = np.linalg.norm((d_output.cpu() - miopen_output.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
             else:
                 diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
-
+            
+            print(diff)
             if(diff<=1e-4): #TODO: Check if the threshold should be reduced
                 print(f"Verification successfull")
             else:
@@ -320,7 +373,7 @@ for layern in range(currlayer, lastlayer):
             print_time_statistics(times, [ "cudnn"])
         
         if(useCudnn):
-            in_desc, out_desc, filt_desc, ws_ptr = destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
+            in_desc, out_desc, filt_desc, ws_ptr = cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
 
 createsummaryfile(summary, outdir, csv_columns)

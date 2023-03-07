@@ -30,6 +30,9 @@ libmiopen.miopenSetTensorDescriptor(in_desc,
                                     in_strides)
 in_bytes = in_n*in_c*in_d*in_h*in_w*ctypes.sizeof(ctypes.c_float)
 in_data = libhip.hipMalloc(in_bytes)
+tmp_input = torch.rand(in_n, in_c, in_d, in_h, in_w).cuda()
+input_data_ptr = tmp_input.data_ptr()
+libhip.hipMemcpyDtoD(in_data, input_data_ptr, in_bytes)
 print("Input tensor created")
 
 # Initializing filter pointer
@@ -46,8 +49,13 @@ libmiopen.miopenSetTensorDescriptor(filt_desc,
                                     tensor_dim,
                                     filt_dims, 
                                     filt_strides)
+data_ptr = tmp_input.data_ptr()
+libhip.hipMemcpyDtoD(in_data, data_ptr, in_bytes)
 filt_bytes = filt_k*filt_c*filt_d*filt_h*filt_w*ctypes.sizeof(ctypes.c_float)
 filt_data = libhip.hipMalloc(filt_bytes)
+tmp_filt = torch.rand(filt_k, filt_c, filt_d, filt_h, filt_w).cuda()
+filt_data_ptr = tmp_filt.data_ptr()
+libhip.hipMemcpyDtoD(filt_data, filt_data_ptr, filt_bytes)
 print("Filter tensor created")
 
 # Convolution descriptor
@@ -97,6 +105,9 @@ libmiopen.miopenSetTensorDescriptor(out_desc,
                                     outstrides)
 out_bytes = int(out_n*out_c*out_d*out_h*out_w*ctypes.sizeof(ctypes.c_float))
 out_data = libhip.hipMalloc(out_bytes)
+tmp_output = torch.zeros(out_n, out_c, out_d, out_h, out_w).cuda()
+out_data_ptr = tmp_output.data_ptr()
+
 print(outdims)
 print("Output tensor created")
 
@@ -128,7 +139,12 @@ libmiopen.miopenConvolutionForward(miopen_context, alpha,
                                     beta, out_desc, out_data,
                                     search_ws, ws_size.value
                                    )
+libhip.hipMemcpyDtoD(out_data_ptr, out_data, out_bytes)
+import torch.nn.functional as F
+ref_op = F.conv3d(tmp_input, tmp_filt, stride=1, padding='valid')
+diff = np.linalg.norm((ref_op.cpu() - tmp_output.cpu())) / (out_n * out_c * out_d * out_h * out_w )
 
+print(diff)
 libmiopen.miopenDestroyConvolutionDescriptor(conv_desc)
 libmiopen.miopenDestroyTensorDescriptor(in_desc)
 libmiopen.miopenDestroyTensorDescriptor(out_desc)

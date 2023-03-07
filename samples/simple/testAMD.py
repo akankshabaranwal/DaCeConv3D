@@ -1,5 +1,5 @@
 # Sample code to test out convolution on AMD GPU.
-import dace
+#import dace
 from implicitGemmNCDHWdace import *
 import torch
 from convutils import parsecsv
@@ -30,12 +30,12 @@ ref_op = torch.ones(batchsize, outchannels, outdepth, outheight, outwidth).cuda(
 t_input = d_input.clone()
 t_kernel = d_kernel.clone()
 
-#sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
-#optimize_for_gpu(sdfg_fun)
-#optim_dace = sdfg_fun.compile()
-from dace.sdfg.utils import load_precompiled_sdfg
+sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
+optimize_for_gpu(sdfg_fun)
+optim_dace = sdfg_fun.compile()
 
-optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/implicitGemmNCDHWdace_dace_conv3d')
+# from dace.sdfg.utils import load_precompiled_sdfg
+#optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/implicitGemmNCDHWdace_dace_conv3d')
 
 optim_dace(Input=d_input, kernel=d_kernel, Output=d_output,
             d_inchannels=inchannels, d_outdepth=outdepth, d_outheight=outheight, d_outwidth=outwidth, 
