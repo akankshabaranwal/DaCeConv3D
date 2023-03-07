@@ -286,3 +286,23 @@ def miopenConvolutionForward(handle, alpha,
                                             betaRef, destDesc, destData,
                                             workspace, ctypes.c_size_t(workSpaceSizeInBytes))
     miopenCheckStatus(status)
+
+
+_libmiopen.miopenDestroyTensorDescriptor.restype = int
+_libmiopen.miopenDestroyTensorDescriptor.argtypes = [ctypes.c_void_p]
+def miopenDestroyTensorDescriptor(tensorDesc):
+    status = _libmiopen.miopenDestroyTensorDescriptor(tensorDesc)
+    miopenCheckStatus(status)
+
+_libmiopen.miopenDestroyConvolutionDescriptor.restype = int
+_libmiopen.miopenDestroyConvolutionDescriptor.argtypes = [ctypes.c_void_p]
+def miopenDestroyConvolutionDescriptor(convDesc):
+    status = _libmiopen.miopenDestroyConvolutionDescriptor(convDesc)
+    miopenCheckStatus(status)
+
+
+_libmiopen.miopenDestroy.restype = int
+_libmiopen.miopenDestroy.argtypes = [ctypes.c_void_p]
+def miopenDestroy(handle):
+    status = _libmiopen.miopenDestroy(ctypes.c_void_p(handle))
+    miopenCheckStatus(status)

@@ -16,7 +16,7 @@ convolution_algo = libmiopen.miopenConvFwdAlgo['miopenConvolutionFwdAlgoDirect']
 
 # Initializing input data pointer
 in_n = 4
-in_c = 1
+in_c = 3
 in_d = 8
 in_h = 8
 in_w = 8
@@ -34,7 +34,7 @@ print("Input tensor created")
 
 # Initializing filter pointer
 filt_k = 1
-filt_c = 1
+filt_c = 3
 filt_d = 3
 filt_h = 3
 filt_w = 3
@@ -128,3 +128,9 @@ libmiopen.miopenConvolutionForward(miopen_context, alpha,
                                     beta, out_desc, out_data,
                                     search_ws, ws_size.value
                                    )
+
+libmiopen.miopenDestroyConvolutionDescriptor(conv_desc)
+libmiopen.miopenDestroyTensorDescriptor(in_desc)
+libmiopen.miopenDestroyTensorDescriptor(out_desc)
+libmiopen.miopenDestroyTensorDescriptor(filt_desc)
+libmiopen.miopenDestroy(miopen_context)

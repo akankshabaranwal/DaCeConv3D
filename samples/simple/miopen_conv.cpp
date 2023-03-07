@@ -114,13 +114,15 @@ int main()
     HIP_ASSERT(hipMalloc( &search_ws, ws_size));
     int returnedAlgoCount;
     miopenConvFwdAlgorithm_t selectedAlgo;
-    miopenConvAlgoPerf_t perfResults[1];
+    const int numAlgo = 3;
+    miopenConvAlgoPerf_t perfResults[numAlgo];
+    // https://rocmsoftwareplatform.github.io/MIOpen/doc/html/find_and_immediate.html 
     CHECK_MIOPEN_ERROR(miopenFindConvolutionForwardAlgorithm(miopen_h, 
                                                             in_desc, in_data,
                                                             filt_desc, filt_data, 
                                                             conv_desc, 
                                                             out_desc, out_data, 
-                                                            1, 
+                                                            numAlgo, 
                                                             &returnedAlgoCount,
                                                             perfResults, search_ws, 
                                                             ws_size, true));
@@ -128,9 +130,15 @@ int main()
     void* d_workspace{nullptr};
     HIP_ASSERT(hipMalloc(&d_workspace, ws_size));
     const float alpha = 1.0f, beta = 0.0f;
-    selectedAlgo = perfResults->fwd_algo;
-    selectedAlgo = miopenConvolutionFwdAlgoImplicitGEMM;
-    std::cout<<perfResults->fwd_algo;
+    std::cout<<"Printing perf results: "<<endl;
+    for(int i = 0; i<numAlgo; i++)
+    {
+        std::cout<<"Algo:"<<perfResults[i].fwd_algo<<", time: "<<perfResults[i].time<<", memory: "<<perfResults->memory<<endl;
+    }
+    std::cout<<"Returned algo count: "<<returnedAlgoCount<<endl;
+    //selectedAlgo = perfResults->fwd_algo;
+    selectedAlgo = miopenConvolutionFwdAlgoGEMM;
+    //std::cout<<perfResults->fwd_algo;
     CHECK_MIOPEN_ERROR(miopenConvolutionForward(miopen_h, &alpha, 
                                                 in_desc, in_data, 
                                                 filt_desc, filt_data,
