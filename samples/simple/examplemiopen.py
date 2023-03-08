@@ -139,6 +139,9 @@ libmiopen.miopenConvolutionForward(miopen_context, alpha,
                                     beta, out_desc, out_data,
                                     search_ws, ws_size.value
                                    )
+print(type(out_data_ptr))
+print(type(out_data))
+print(type(out_bytes))
 libhip.hipMemcpyDtoD(out_data_ptr, out_data, out_bytes)
 import torch.nn.functional as F
 ref_op = F.conv3d(tmp_input, tmp_filt, stride=1, padding='valid')

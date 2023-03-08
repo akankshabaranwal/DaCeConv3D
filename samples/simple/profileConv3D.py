@@ -19,7 +19,6 @@ if(useCudnn):
 if(useMIOpen):
     import libmiopen, libhip
     from miopenConv import miopen_init, miopensetlayerdesc, miopendestroydescinoutfilt
-    from miopenConv import miopen_init
 
 from dace.sdfg.utils import load_precompiled_sdfg
 import numpy as np
@@ -142,7 +141,6 @@ d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels
 ## Prepare inputs for pytorch fun
 t_input = d_input.clone()
 t_kernel = d_kernel.clone()
-miopen_output = d_output.clone()
 
 inchannels = np.int32(inchannels)
 indepth = np.int32(indepth)
@@ -158,6 +156,9 @@ pad = 0
 dil = 1
 stride = 1
 
+alpha = 1.0
+beta = 0
+    
 if(useCudnn):
     # Initializing cudnn
     conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
@@ -166,17 +167,10 @@ if(useCudnn):
 
 if(useMIOpen):
     # Initializing miopen
-    conv_desc, miopen_context, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = miopen_init(pad, stride, dil)
-    # miopen variable parameters init
-    in_desc, in_data, out_desc, out_data, outbytes, outdims, filt_desc, filt_data, ws_size, search_ws, perfResult = miopensetlayerdesc(miopen_context, outdimsinit,
-                                                                                                            conv_desc, d_input, d_kernel,
-                                                                                                            batchsize, kdim, 
-                                                                                                            inchannels, indepth,inheight, inwidth,
-                                                                                                            outchannels, data_type, tensor_dim)
-    convolution_algo = perfResult[0].fwd_algo
-    print(f"Found MIOpen algorithm: {perfResult[0].fwd_algo}")
+    miopen_context, data_type, tensor_dim, conv_dim, convolution_mode, conv_desc = miopen_init(pad, stride, dil)
+    # Initializing input data pointer   
+    in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo = miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim)
 
-ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
 
 if loadprecompiled:
     optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/{selectMethod}_dace_conv3d')
@@ -204,7 +198,7 @@ if(useMIOpen):
                                     filt_desc, filt_data,
                                     conv_desc, convolution_algo,
                                     beta, out_desc, out_data,
-                                    search_ws, ws_size.value
+                                    workspace, ws_size.value
                                    )
 
 # Function calls to run the optim dace function
@@ -252,11 +246,7 @@ for layern in range(currlayer, lastlayer):
         if (useCudnn):
             cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
         if (useMIOpen):
-            in_desc, in_data, out_desc, out_data, outdims, outbytes, filt_desc, filt_data, ws_size, search_ws, perfResult = miopensetlayerdesc(miopen_context, outdimsinit,
-                                                                                                            conv_desc, d_input, d_kernel,
-                                                                                                            batchsize, kdim, 
-                                                                                                            inchannels, indepth,inheight, inwidth,
-                                                                                                            outchannels, data_type, tensor_dim)
+            in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo = miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim)
             
         # Code for verification
         if verify:
@@ -264,7 +254,6 @@ for layern in range(currlayer, lastlayer):
                 print("INFO: Running verification to compare against cudnn output")
             else:
                 print("INFO: Running verification to compare against torch output")
-            miopen_output = d_output.clone()
 
             if(useCudnn):
                 run_cudnn()
@@ -282,17 +271,8 @@ for layern in range(currlayer, lastlayer):
                 print('Difference between cudnn and dace values:', diff)
             
             if(useMIOpen):
-                libmiopen.miopenConvolutionForward(miopen_context, alpha,
-                                    in_desc, in_data,
-                                    filt_desc, filt_data,
-                                    conv_desc, convolution_algo,
-                                    beta, out_desc, out_data,
-                                    search_ws, ws_size.value
-                                   )
-                miopen_output_ptr = miopen_output.data_ptr()
-                #print(miopen_output)
-                libhip.hipMemcpyDtoD(miopen_output_ptr, out_data, outbytes)
-                diff = np.linalg.norm((d_output.cpu() - miopen_output.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
+                libhip.hipMemcpyDtoD(out_data_ptr, out_data, out_bytes)
+                diff = np.linalg.norm((d_output.cpu() - out_data_verify.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
             else:
                 diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
             
@@ -301,7 +281,6 @@ for layern in range(currlayer, lastlayer):
                 print(f"Verification successfull")
             else:
                 sys.exit(f"!!! ERROR: Incorrect verification layer number {layern}")
-
 
         # Comparitive profiling using time funcs
         print(f"INFO: Warmup for {warmupiter} iterations and total iterations {totaliter}")
