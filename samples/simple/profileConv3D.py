@@ -222,6 +222,10 @@ if (useCudnn):
     # Clearing cudnn variables
     in_desc, out_desc, filt_desc, ws_ptr = cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
 
+            
+if (useMIOpen):
+    in_desc, out_desc, filt_desc, ws_ptr = miopendestroydescinoutfilt(in_desc, out_desc, filt_desc, workspace)
+
 for layern in range(currlayer, lastlayer):
     for batchsize in batchsizes:
         d_input, d_kernel, d_output, inchannels, indepth, inheight, inwidth, outchannels, batchsize, kdim = prepareinputs(convparams.iloc[layern], layout, batchsize)
@@ -353,7 +357,8 @@ for layern in range(currlayer, lastlayer):
         
         if(useCudnn):
             in_desc, out_desc, filt_desc, ws_ptr = cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
-
+        if(useMIOpen):
+            in_desc, out_desc, filt_desc, ws_ptr = miopendestroydescinoutfilt(in_desc, out_desc, filt_desc, workspace)
 
 createsummaryfile(summary, outdir, csv_columns)
 if(useCudnn):
