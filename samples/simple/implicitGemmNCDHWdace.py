@@ -46,6 +46,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     return
 
 
+
 # Distribute computation along GEMM_M, GEMM_N. For all other
 # CTAtileM = 64
 # CTAtileN = 64
@@ -53,6 +54,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 # WARPtileM = 4
 # WARPtileN = 8
 
+# For layer 0
 CTAtileM = 128
 CTAtileN = 16
 

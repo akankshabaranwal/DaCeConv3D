@@ -10,6 +10,8 @@ import glob
 useCudnn = 0
 useMIOpen = 1
 
+#TODO: If script gets hung then remove calls to miopendestroydescinoutfilt and rerun. Restarting ault also helps
+
 if(useCudnn):
     import pycuda.autoinit
     from pycuda import gpuarray
@@ -42,6 +44,7 @@ parser.add_argument('--compareprof', action='store_true', help='time funcs compa
 parser.add_argument('--proftorch', action='store_true', help='run torch code with markers')
 parser.add_argument('--profoptimdace', action='store_true', help='run dace code with markers')
 parser.add_argument('--profcudnn', action='store_true', help='run cudnn code with markers')
+parser.add_argument('--profmiopen', action='store_true', help='run miopen code with markers')
 
 parser.add_argument('--setlaunchwait', action='store_true', help='set launch wait')
 parser.add_argument('--enableplots', action='store_true', help='disable creating plots')
@@ -66,6 +69,7 @@ proftorch = args.proftorch
 profdace = False
 profoptimdace = args.profoptimdace
 profcudnn = args.profcudnn
+profmiopen = args.profmiopen
 setlaunchwait = args.setlaunchwait
 warmupiter = args.warmupiter
 totaliter = args.totaliter
@@ -210,9 +214,13 @@ def run_optim_dace():
 median_dace = []
 median_cudnn = []
 median_torch = []
+median_miopen = []
 layer_names = []
+
 if (useCudnn):
     csv_columns = ['layer_name', 'dace_median', 'cudnn_median']
+elif (useMIOpen):
+    csv_columns = ['layer_name', 'dace_median', 'miopen_median']
 else:
     csv_columns = ['layer_name', 'dace_median', 'torch_median']
 
@@ -291,6 +299,7 @@ for layern in range(currlayer, lastlayer):
         print(f"INFO: Statistics for layer number {layern} with batch size of {batchsize}")
         dace_median = []
         torch_median = []
+        miopen_median = []
         cudnn_median = []
 
         if compareprof:
@@ -309,6 +318,22 @@ for layern in range(currlayer, lastlayer):
                 median_cudnn.append(statistics.median(times[1]))
                 dace_median.append(times[0])
                 cudnn_median.append(times[1])
+                summary.append(layersummary)
+            elif useMIOpen:
+                times = time_funcs([run_optim_dace, run_miopen],
+                func_names=["dace", "miopen"],
+                warmups=warmupiter,
+                num_iters=totaliter,
+                launch_wait=setlaunchwait)
+                print_time_statistics(times, [ "dace", "miopen"])
+                layersummary['layer_name'] = layer_name
+                layersummary['times'] = times
+                layersummary['dace_median'] = statistics.median(times[0])
+                layersummary['miopen_median'] = statistics.median(times[1])
+                median_dace.append(statistics.median(times[0]))
+                median_miopen.append(statistics.median(times[1]))
+                dace_median.append(times[0])
+                miopen_median.append(times[1])
                 summary.append(layersummary)
             else:
                 times = time_funcs([run_optim_dace, run_torch],
@@ -354,6 +379,16 @@ for layern in range(currlayer, lastlayer):
                             num_iters=totaliter,
                             launch_wait=setlaunchwait)
             print_time_statistics(times, [ "cudnn"])
+            
+        if profmiopen:
+            if(not(useMIOpen)):
+                sys.exit("!!ERROR: MIOpen is not available for non AMD GPUs")
+            times = time_funcs([run_miopen],
+                            func_names=["miopen"],
+                            warmups=warmupiter,
+                            num_iters=totaliter,
+                            launch_wait=setlaunchwait)
+            print_time_statistics(times, [ "miopen"])
         
         if(useCudnn):
             in_desc, out_desc, filt_desc, ws_ptr = cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr)
@@ -361,8 +396,11 @@ for layern in range(currlayer, lastlayer):
             in_desc, out_desc, filt_desc, ws_ptr = miopendestroydescinoutfilt(in_desc, out_desc, filt_desc, workspace)
 
 createsummaryfile(summary, outdir, csv_columns)
+
 if(useCudnn):
     createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_cudnn, layer_names, summary)
+elif(useMIOpen):
+    createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_miopen, layer_names, summary)
 else:
     createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_torch, layer_names, summary)
 
@@ -370,3 +408,6 @@ else:
 if(useCudnn):
     libcudnn.cudnnDestroyConvolutionDescriptor(conv_desc)
     libcudnn.cudnnDestroy(cudnn_context)
+elif(useMIOpen):
+    libmiopen.miopenDestroyConvolutionDescriptor(conv_desc)
+    libmiopen.miopenDestroy(miopen_context)

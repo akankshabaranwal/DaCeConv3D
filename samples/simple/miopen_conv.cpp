@@ -33,7 +33,7 @@ int main()
     std::cout<<" Created miopen handle" <<std::endl;
 
     // input
-    const int in_n = 4, in_c = 1, in_d = 8, in_h = 8, in_w = 8;
+    const int in_n = 16, in_c = 256, in_d = 4, in_h = 4, in_w = 4;
     std::cout << "in_n: " << in_n << ", in_c: " << in_c << ", in_d: " << in_d << ", in_h: " << in_h << ", in_w: " << in_w << std::endl;
     miopenTensorDescriptor_t in_desc;
     CHECK_MIOPEN_ERROR(miopenCreateTensorDescriptor(&in_desc));
@@ -47,7 +47,7 @@ int main()
     HIP_ASSERT(hipMalloc( &in_data, bytes));
 
     // filter
-    const int filt_k = 1, filt_c = 1, filt_d = 3, filt_h = 3, filt_w = 3;
+    const int filt_k = 256, filt_c = 256, filt_d = 3, filt_h = 3, filt_w = 3;
     std::cout << "filt_k: " << filt_k << ", filt_c: " << filt_c << ", filt_d: " << filt_d << ", filt_h: " << filt_h << ", filt_w: " << filt_w << std::endl;
     miopenTensorDescriptor_t filt_desc;
     CHECK_MIOPEN_ERROR(miopenCreateTensorDescriptor(&filt_desc));
@@ -136,8 +136,8 @@ int main()
         std::cout<<"Algo:"<<perfResults[i].fwd_algo<<", time: "<<perfResults[i].time<<", memory: "<<perfResults->memory<<endl;
     }
     std::cout<<"Returned algo count: "<<returnedAlgoCount<<endl;
-    //selectedAlgo = perfResults->fwd_algo;
-    selectedAlgo = miopenConvolutionFwdAlgoGEMM;
+    selectedAlgo = perfResults->fwd_algo;
+    //selectedAlgo = miopenConvolutionFwdAlgoGEMM;
     //std::cout<<perfResults->fwd_algo;
     CHECK_MIOPEN_ERROR(miopenConvolutionForward(miopen_h, &alpha, 
                                                 in_desc, in_data, 

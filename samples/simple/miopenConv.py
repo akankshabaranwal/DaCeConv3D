@@ -104,6 +104,7 @@ def miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, 
     return in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr2, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo
 
 def miopendestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr):
+    #return in_desc, out_desc, filt_desc, ws_ptr
     ws_ptr = None
     libmiopen.miopenDestroyTensorDescriptor(in_desc)
     libmiopen.miopenDestroyTensorDescriptor(out_desc)
