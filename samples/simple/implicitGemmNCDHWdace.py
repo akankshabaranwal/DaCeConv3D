@@ -41,11 +41,8 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     # Fuse the map and reduce nodes
     # Apply GPU transformation
     # tmp_i = find_map_by_param(sdfg, '__i0')
-    # tmp_i.map.schedule = dace.ScheduleType.Sequential
-    
+    # tmp_i.map.schedule = dace.ScheduleType.Sequential    
     return
-
-
 
 # Distribute computation along GEMM_M, GEMM_N. For all other
 # CTAtileM = 64
@@ -111,7 +108,7 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
     
     d_GEMM_M = (d_batchsize*d_outdepth*d_outheight*d_outwidth)
     d_GEMM_N = d_outchannels
-    d_GEMM_K = (d_inchannels * d_kdim * d_kdim * d_kdim)
+    d_GEMM_K = (d_inchannels*d_kdim*d_kdim*d_kdim)
     d_DHW = d_outdepth*d_outheight*d_outwidth
     d_HW = d_outheight*d_outwidth
     d_kdim3 = d_kdim*d_kdim*d_kdim
@@ -176,4 +173,4 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                     p = dace.int32(opq_residual/d_outwidth)
                     q = dace.int32(opq_residual%d_outwidth)
 
-                    Output[ n, cta_n+gemm_n+warp_n, o, p, q ] = cta_reducedk[gemm_n+warp_n, gemm_m+warp_m]
+                    Output[ n, cta_n+gemm_n+warp_n, o, p, q] = cta_reducedk[gemm_n+warp_n, gemm_m+warp_m]

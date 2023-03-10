@@ -259,7 +259,10 @@ for layern in range(currlayer, lastlayer):
             cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
         if (useMIOpen):
             in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo = miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim)
-            
+        
+        if(layern!=0):
+            print("WARN: For except layer 0 preselecting implicit gemm so convolution algo is 5")
+            convolution_algo = 5
         # Code for verification
         if verify:
             if(useCudnn):

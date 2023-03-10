@@ -64,8 +64,8 @@ miopenConvFwdAlgo = {
     'miopenConvolutionFwdAlgoGEMM': 0, 
     'miopenConvolutionFwdAlgoDirect': 1, 
     'miopenConvolutionFwdAlgoFFT': 2, 
-    'miopenConvolutionFwdAlgoWinograd': 3, 
-    'miopenConvolutionFwdAlgoImplicitGEMM': 4
+    'miopenConvolutionFwdAlgoWinograd': 3,
+    'miopenConvolutionFwdAlgoImplicitGEMM': 5
 }
 
 miopenDatatype = {

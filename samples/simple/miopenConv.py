@@ -10,7 +10,7 @@ def miopen_init(pad, stride, dil):
     convstr = [stride, stride, stride]
     convdil = [dil, dil, dil]
     conv_desc = libmiopen.miopenCreateConvolutionDescriptor()    
-    libmiopen.miopenInitConvolutionNdDescriptor(conv_desc, 
+    libmiopen.miopenInitConvolutionNdDescriptor(conv_desc,
                                                 conv_dim,
                                                 convpad,
                                                 convstr,
@@ -89,7 +89,7 @@ def miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, 
                                                             conv_desc,
                                                             out_desc)
     workspace = libhip.hipMalloc(ws_size)
-    requestedalgocount = 1
+    requestedalgocount = 5
     print("INFO: Launching MIOpen find it takes a few seconds")
     perfresult = libmiopen.miopenFindConvolutionForwardAlgorithm(miopen_context, 
                                                     in_desc, in_data,
@@ -99,12 +99,14 @@ def miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, 
                                                     requestedalgocount,
                                                     workspace, ws_size.value
                                                     )
-    print("INFO: Done launching MIOpen find")
+    for convresult in perfresult:
+        print(f"For algorithm {convresult.fwd_algo}, time is {convresult.time}, memory is {convresult.memory}.")
     convolution_algo = perfresult[0].fwd_algo
+    print(f"INFO: Done launching MIOpen find, optimal convolution algo is: {convolution_algo}. Change the MIOPEN_FIND_MODE to 1 for exhaustive finding the algorithm")
     return in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr2, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo
 
 def miopendestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr):
-    #return in_desc, out_desc, filt_desc, ws_ptr
+    return in_desc, out_desc, filt_desc, ws_ptr
     ws_ptr = None
     libmiopen.miopenDestroyTensorDescriptor(in_desc)
     libmiopen.miopenDestroyTensorDescriptor(out_desc)
