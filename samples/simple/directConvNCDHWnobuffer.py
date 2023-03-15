@@ -58,7 +58,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 #                     tmp = tmp + Input[ cta_n, ic, d+kd, h+kh, w+kw]*kernel[cta_oc, ic, kd, kh, kw]
 #                 Output[cta_n, cta_oc, d, h, w] = tmp
 
-CTAtileDHW = 64
+CTAtileDHW = 8
 kdim = 3
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
 def dace_conv3d( Input: dtype[d_batchsize,  d_inchannels, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1] @dace.StorageType.GPU_Global ,
