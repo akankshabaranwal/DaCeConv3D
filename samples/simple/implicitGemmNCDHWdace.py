@@ -112,10 +112,10 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
     d_HW = d_outheight*d_outwidth
 
     for cta_n, cta_m in dace.map[0:d_GEMM_N:CTAtileN, 0:d_GEMM_M:CTAtileM] @dace.ScheduleType.GPU_Device:
-            cta_reducedk = dace.ndarray([CTAtileM, CTAtileN], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
+            cta_reducedk = dace.ndarray([CTAtileN, CTAtileM], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM]@dace.ScheduleType.GPU_ThreadBlock:
-                cta_reducedk[warp_m, warp_n] = 0
-                cta_reducedk[warp_m, warp_n+1] = 0
+                cta_reducedk[warp_n, warp_m] = 0
+                cta_reducedk[warp_n+1, warp_m] = 0
 
             cta_input = dace.ndarray([CTAtileM, 27], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             cta_kernel = dace.ndarray([CTAtileN, 27], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
@@ -130,15 +130,17 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                     p = dace.int32(opq_residual/d_outwidth)
                     q = dace.int32(opq_residual%d_outwidth)
 
-                    for  t, r, s in dace.map[ 0:3, 0:3, 0:3]@dace.ScheduleType.Sequential:
-                    
-                        d = o + t
-                        h = p + r
-                        w = q + s
-                        
-                        cta_input[warp_m, s*9+3*r+t] = Input[n, cta_c, d, h, w]
-                        cta_kernel[warp_n, s*9+3*r+t] = kernel[cta_n+warp_n, cta_c, t, r, s]
-                        cta_kernel[warp_n + 1, s*9+3*r+t] = kernel[1+cta_n+warp_n, cta_c, t, r, s]
+                    for  t in range(0, 3):
+                        for r in range(0, 3):
+                            for s in range(0, 3):
+                            
+                                d = o + t
+                                h = p + r
+                                w = q + s
+                                
+                                cta_input[warp_m, s*9+3*r+t] = Input[n, cta_c, d, h, w]
+                                cta_kernel[warp_n, s*9+3*r+t] = kernel[cta_n+warp_n, cta_c, t, r, s]
+                                cta_kernel[warp_n + 1, s*9+3*r+t] = kernel[1+cta_n+warp_n, cta_c, t, r, s]
 
                 for warp_n, warp_m in dace.map[0:CTAtileN:WARPtileN, 0:CTAtileM]@dace.ScheduleType.GPU_ThreadBlock:
                     warp_input = dace.ndarray([27], dtype=Input.dtype, storage=dace.StorageType.Register)
@@ -151,14 +153,14 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                     tmp0 = dace.ndarray([1], dtype=Input.dtype, storage=dace.StorageType.Register)
                     tmp1 = dace.ndarray([1], dtype=Input.dtype, storage=dace.StorageType.Register)
 
-                    tmp0 = cta_reducedk[warp_m, warp_n]
-                    tmp1 = cta_reducedk[warp_m, 1+warp_n]
+                    tmp0 = cta_reducedk[warp_n, warp_m]
+                    tmp1 = cta_reducedk[1+warp_n, warp_m]
                         
                     for t, r, s in dace.map[0:3, 0:3, 0:3]@dace.ScheduleType.Sequential:
                         tmp0 = tmp0 + warp_input[ s*9+3*r+t]*warp_kernel[0, s*9+3*r+t]
                         tmp1 = tmp1 + warp_input[ s*9+3*r+t]*warp_kernel[1, s*9+3*r+t]
-                    cta_reducedk[warp_m, warp_n] = tmp0
-                    cta_reducedk[warp_m, 1+warp_n] = tmp1
+                    cta_reducedk[warp_n, warp_m] = tmp0
+                    cta_reducedk[1+warp_n, warp_m] = tmp1
 
             for warp_n, warp_m in dace.map[0: CTAtileN:WARPtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock:
                 n =  dace.int32((cta_m+warp_m)/d_DHW)
@@ -169,5 +171,5 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                 
                 p = dace.int32(opq_residual/d_outwidth)
                 q = dace.int32(opq_residual%d_outwidth)
-                Output[ n, cta_n+warp_n, o, p, q] = cta_reducedk[warp_m, warp_n]
-                Output[ n, cta_n+1+warp_n, o, p, q] = cta_reducedk[warp_m, 1+warp_n]
+                Output[ n, cta_n+warp_n, o, p, q] = cta_reducedk[warp_n, warp_m]
+                Output[ n, cta_n+1+warp_n, o, p, q] = cta_reducedk[1+warp_n, warp_m]
