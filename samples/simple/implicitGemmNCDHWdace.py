@@ -155,10 +155,12 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
 
                     tmp0 = cta_reducedk[warp_n, warp_m]
                     tmp1 = cta_reducedk[1+warp_n, warp_m]
-                        
-                    for t, r, s in dace.map[0:3, 0:3, 0:3]@dace.ScheduleType.Sequential:
-                        tmp0 = tmp0 + warp_input[ s*9+3*r+t]*warp_kernel[0, s*9+3*r+t]
-                        tmp1 = tmp1 + warp_input[ s*9+3*r+t]*warp_kernel[1, s*9+3*r+t]
+                    for  t in range(0, 3):
+                        for r in range(0, 3):
+                            for s in range(0, 3):                        
+                    #for t, r, s in dace.map[0:3, 0:3, 0:3]@dace.ScheduleType.Sequential:
+                                tmp0 = tmp0 + warp_input[ s*9+3*r+t]*warp_kernel[0, s*9+3*r+t]
+                                tmp1 = tmp1 + warp_input[ s*9+3*r+t]*warp_kernel[1, s*9+3*r+t]
                     cta_reducedk[warp_n, warp_m] = tmp0
                     cta_reducedk[1+warp_n, warp_m] = tmp1
 

@@ -58,8 +58,9 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 #                     tmp = tmp + Input[ cta_n, ic, d+kd, h+kh, w+kw]*kernel[cta_oc, ic, kd, kh, kw]
 #                 Output[cta_n, cta_oc, d, h, w] = tmp
 
-CTAtileDHW = 8
+CTAtileDHW = 64
 kdim = 3
+
 @dace.program(device=dtypes.DeviceType.GPU, auto_optimize=False)
 def dace_conv3d( Input: dtype[d_batchsize,  d_inchannels, d_outdepth+d_kdim-1, d_outheight+d_kdim-1, d_outwidth+d_kdim-1] @dace.StorageType.GPU_Global ,
                 kernel: dtype[d_outchannels, d_inchannels, d_kdim, d_kdim, d_kdim] @dace.StorageType.GPU_Global,
@@ -73,6 +74,10 @@ def dace_conv3d( Input: dtype[d_batchsize,  d_inchannels, d_outdepth+d_kdim-1, d
             h, w = dace.int32(dhw_residual/d_outheight), dace.int32(dhw_residual%d_outheight)
             tmp = dace.ndarray([1], dtype=Input.dtype, storage=dace.StorageType.Register)
             tmp = 0
-            for ic, kd, kh, kw in dace.map[0:d_inchannels, 0:kdim, 0:kdim, 0:kdim]@dace.ScheduleType.Sequential:
-                tmp = tmp + Input[ n, ic, d+kd, h+kh, w+kw]*kernel[oc, ic, kd, kh, kw]
+
+            for ic in range(0,d_inchannels): 
+                for kd in range(0,3):
+                    for kh in range(0,3):
+                        for kw in range(0,3):
+                            tmp = tmp + Input[ n, ic, d+kd, h+kh, w+kw]*kernel[oc, ic, kd, kh, kw]
             Output[n, oc, d, h, w]  = tmp
