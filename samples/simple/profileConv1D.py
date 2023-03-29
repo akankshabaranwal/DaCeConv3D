@@ -45,7 +45,7 @@ parser.add_argument('-totaliter','--totaliter', type=int, default=100, help='set
 parser.add_argument('-lastlayer','--lastlayer', type=int, default=1, help='set number of total iterations')
 parser.add_argument('-currlayer','--currlayer', type=int, default=0, help='set number of total iterations')
 
-parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmNCDHWdace', help='select which implementation to run')
+parser.add_argument('-implementation','--implementation', type=str, default='implicitGemmNCWdace', help='select which implementation to run')
 
 # TODO: Check if you can plot and compare different versions of dace optimizations
 # TODO: Automate the roofline analysis plot
@@ -79,47 +79,8 @@ torch.cuda.empty_cache()
 # Set the dace implementation to run
 selectMethod = args.implementation
 
-if selectMethod == 'implicitGemmNCDHWmatmul':
-    from implicitGemmNCDHWmatmul import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNCDHWindexv0dace':
-    from implicitGemmNCDHWindexv0dace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmdace':
-    from implicitGemmdace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmNCDHWdace':
-    from implicitGemmNCDHWdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNCDHWsoap':
-    from implicitGemmNCDHWsoap import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmsplitKdace':
-    from implicitGemmsplitKdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNoIndexdace':
-    from implicitGemmNoIndexdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWdace':
-    from directConvNCDHWdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWIOdace':
-    from directConvNCDHWIOdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWnobuffer': # Fast code with no buffers
-    from directConvNCDHWnobuffer import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCtileddace': # Slow code with explicit buffers
-    from directConvNDHWCtileddace import *
-    layout = 'NDHWC'
-elif selectMethod == 'directConvNCDHWtileddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWtileddace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWzerodace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWmergeddace import *
+if selectMethod == 'implicitGemmNCWdace':
+    from implicitGemmNCWdace import *
     layout = 'NCDHW'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
@@ -168,7 +129,7 @@ else:
 
 if loadprecompiled:
 
-    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/dacelocal/.dacecache/{selectMethod}_dace_conv3d')
+    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/{selectMethod}_dace_conv3d')
 else:    
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
     optimize_for_gpu(sdfg_fun)
