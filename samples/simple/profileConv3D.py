@@ -100,6 +100,9 @@ elif selectMethod == 'implicitGemmsplitKdace':
 elif selectMethod == 'implicitGemmNoIndexdace':
     from implicitGemmNoIndexdace import *
     layout = 'NCDHW'
+elif selectMethod == 'implicitGemmTiledonlydace':
+    from implicitGemmTiledonlydace import *
+    layout = 'NDHWC'
 elif selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
     layout = 'NCDHW'
@@ -226,8 +229,9 @@ for layern in range(currlayer, lastlayer):
         outwidth = np.int32(inwidth - kdim + 1)
 
         layer_name = f'in_{batchsize}X{inchannels}X{indepth}X{inheight}X{inwidth}_k_{kdim}X{kdim}X{kdim}_och_{outchannels}'
+        layer_name1 = f'L{layern}'
         print(f'INFO: {layout} layout {layer_name}')
-        layer_names.append(layer_name)
+        layer_names.append(layer_name1)
 
         if (useCudnn):
             cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, t_input,  t_kernel, t_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)

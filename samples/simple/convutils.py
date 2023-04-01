@@ -105,7 +105,7 @@ def prepareinputs(currconv, layout, batchsize):
     inheight = currconv["InputHeight"]
     inwidth = currconv["InputWidth"]
     outchannels = currconv["OutputChannel"]
-    kdim = 3
+    kdim = currconv["KernelDepth"]
     outdepth = indepth - kdim + 1
     outheight = inheight - kdim + 1
     outwidth = inheight - kdim + 1
@@ -174,7 +174,7 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
                 exit()
             
             axtorch = sns.violinplot(ax = axes[0, col], y=df["ref"], cut=0, color = 'pink')
-            axtorch.set(xlabel=f'{paramscsv}layer{layern}', ylabel='reference runtime in ms')
+            axtorch.set(xlabel=f'{paramscsv}layer{layern}', ylabel='cudnn runtime in ms')
 
             axd = sns.violinplot(ax = axes[1, col], y=df["dace"], cut=0, color = 'skyblue')
             axd.set( ylabel=f'dace runtime in ms', xlabel=  f'{paramscsv}layer{layern}')
@@ -211,16 +211,25 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
         plt.cla()
         plt.clf()
         if len(median_dace) != 0 and len(median_ref) !=0:
+            font_size = 16
+            plt.rc('font', size=font_size)
+            plt.rc('axes', titlesize=font_size)     # fontsize of the axes title
+            plt.rc('axes', labelsize=font_size)    # fontsize of the x and y labels
+            plt.rc('xtick', labelsize=font_size)    # fontsize of the tick labels
+            plt.rc('ytick', labelsize=font_size)    # fontsize of the tick labels
+            plt.rc('legend', fontsize=font_size)    # legend fontsize
+            plt.rc('figure', titlesize=font_size)
+            
             print("INFO: Plotting summary graph")
             # set width of bar
             barWidth = 0.2
-            fig = plt.subplots(figsize =(12, 8))
+            fig = plt.subplots(figsize =(8, 6))
             # Set position of bar on X axis
             br1 = np.arange(len(median_ref))
             br2 = [x + barWidth for x in br1]
             
             # Make the plot
-            plt.bar(br1, median_ref, color ='pink', width = barWidth, edgecolor ='grey', label ='reference')
+            plt.bar(br1, median_ref, color ='pink', width = barWidth, edgecolor ='grey', label ='cudnn')
             plt.bar(br2, median_dace, color ='skyblue', width = barWidth, edgecolor ='grey', label ='dace')
             addlabels(br1, median_ref)
             addlabels(br2, median_dace)

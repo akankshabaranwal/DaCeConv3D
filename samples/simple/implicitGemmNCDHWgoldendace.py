@@ -83,7 +83,7 @@ WARPtileK = 1
 # Best perf is with below for the third layer onwards
 '''
 CTAtileM =  8
-CTAtileN = 64-
+CTAtileN = 64
 CTAtileK = 4
 
 WARPtileM = 2

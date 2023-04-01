@@ -136,14 +136,6 @@ def dace_conv3d(Input: dtype[d_batchsize, d_inchannels, d_outdepth+d_kdim-1, d_o
                     s = 0
 
                     for warp_k in dace.map[0:CTAtileK]@dace.ScheduleType.Sequential:
-                        #c  = dace.int32((cta_k+warp_k)/d_kdim3)
-                        #ctrs_residual  = dace.int32((cta_k+warp_k)%d_kdim3)
-                        
-                        #t = dace.int32(ctrs_residual/d_kdim2)
-                        #trs_residual = dace.int32(ctrs_residual%d_kdim2)
-                        
-                        #r = dace.int32(trs_residual/d_kdim)
-                        #s = dace.int32(trs_residual%d_kdim)
 
                         if(s==3):
                             s=0
