@@ -88,6 +88,12 @@ elif selectMethod == 'implicitGemmNCDHWindexv0dace':
 elif selectMethod == 'implicitGemmdace':
     from implicitGemmdace import *
     layout = 'NDHWC'
+elif selectMethod == 'implicitGemmTileddace':
+    from implicitGemmTileddace import *
+    layout = 'NDHWC'
+elif selectMethod == 'implicitGemmWarpTileddace':
+    from implicitGemmWarpTileddace import *
+    layout = 'NDHWC'
 elif selectMethod == 'implicitGemmNCDHWdace':
     from implicitGemmNCDHWdace import *
     layout = 'NCDHW'

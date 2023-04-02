@@ -38,8 +38,8 @@ def optimize_for_gpu(sdfg: dace.SDFG):
     dace.Config.set('compiler', 'default_data_types', value='C')
     # Fuse the map and reduce nodes
     # Apply GPU transformation
-    tmp_i = find_map_by_param(sdfg, '__i0')
-    tmp_i.map.schedule = dace.ScheduleType.Sequential
+    #tmp_i = find_map_by_param(sdfg, '__i0')
+    #tmp_i.map.schedule = dace.ScheduleType.Sequential
     
     return
 
@@ -47,7 +47,7 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 # Distribute computation along GEMM_M, GEMM_N 
 CTAtileM =  4
 CTAtileN = 4
-CTAtileK = 2 # Does not effect the parallel part. Keep it 1.
+CTAtileK = 1 # Does not effect the parallel part. Keep it 1.
 
 WARPtileM = 2
 WARPtileN = 2
@@ -78,12 +78,12 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
         cta_reducedk = dace.ndarray([CTAtileM, CTAtileN], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
         cta_reducedk[:] = 0
 
-        for cta_k in range(0, d_GEMM_K, CTAtileK):
+        for cta_k in dace.map[0:d_GEMM_K:CTAtileK]@dace.ScheduleType.Sequential:
             cta_input = dace.ndarray([CTAtileM, CTAtileK], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             cta_kernel = dace.ndarray([CTAtileK, CTAtileN], dtype=Input.dtype, storage=dace.StorageType.GPU_Shared)
             
             for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock: # thread parallel
-                for thread_k in range(0, CTAtileK):
+                for thread_k in dace.map[0:CTAtileK]@dace.ScheduleType.Sequential:
                     n =  dace.int32((cta_m+thread_m)/d_DHW)
                     nopq_residual = dace.int32((cta_m+thread_m) % d_DHW)
                     o = dace.int32(nopq_residual/d_HW)
@@ -102,7 +102,7 @@ def dace_conv3d(Input: dtype[d_batchsize, d_outdepth+d_kdim-1, d_outheight+d_kdi
                     cta_kernel[thread_k, thread_n] = kernel[cta_n+thread_n, t, r, s, c]
 
             for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock: # thread parallel
-                for thread_k in range(0, CTAtileK):
+                for thread_k in dace.map[0:CTAtileK]@dace.ScheduleType.Sequential:
                     cta_reducedk[thread_m, thread_n] = cta_reducedk[thread_m, thread_n] + cta_input[thread_m, thread_k]*cta_kernel[thread_k, thread_n]
 
         for thread_n, thread_m in dace.map[0: CTAtileN, 0: CTAtileM]@dace.ScheduleType.GPU_ThreadBlock:

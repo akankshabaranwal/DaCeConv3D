@@ -45,12 +45,12 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 
 # Distribute computation along GEMM_M, GEMM_N 
-CTAtileM =  4
-CTAtileN = 4
-CTAtileK = 2 # Does not effect the parallel part. Keep it 1.
+CTAtileM =  32
+CTAtileN = 16
+CTAtileK = 1 # Does not effect the parallel part. Keep it 1.
 
 WARPtileM = 2
-WARPtileN = 2
+WARPtileN = 4
 WARPtileK = 1 # Does not effect the parallel part. Keep it 1.
 
 nthread_n = np.int32(CTAtileN/WARPtileN)
