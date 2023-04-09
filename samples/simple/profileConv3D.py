@@ -112,6 +112,9 @@ elif selectMethod == 'implicitGemmTiledonlydace':
 elif selectMethod == 'directConvNCDHWdace':
     from directConvNCDHWdace import *
     layout = 'NCDHW'
+elif selectMethod == 'directConvNCDHWtileIC':
+    from directConvNCDHWtileIC import *
+    layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
     from directConvNCDHWIOdace import *
     layout = 'NCDHW'
