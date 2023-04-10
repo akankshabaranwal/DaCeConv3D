@@ -51,12 +51,12 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 # WARPtileN = 8
 
 CTAtileM = 64
-CTAtileN = 16
+CTAtileN = 32
 
 CTAtileK = 4
 
 WARPtileM = 2
-WARPtileN = 16
+WARPtileN = 32
 
 # Best perf is with below for the first layer
 '''

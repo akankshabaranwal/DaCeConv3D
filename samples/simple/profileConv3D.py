@@ -69,7 +69,7 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
-batchsizes = [16]
+batchsizes = [8]
 
 if (verify and compareprof):
     sys.exit("!!! ERROR: Some pycuda context issue when both verif and compareprof are called together")

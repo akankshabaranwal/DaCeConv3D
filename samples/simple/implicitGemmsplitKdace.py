@@ -46,14 +46,14 @@ def optimize_for_gpu(sdfg: dace.SDFG):
 
 # Distribute computation along GEMM_M, GEMM_N 
 CTAtileM = 64
-CTAtileN = 16
+CTAtileN = 32
 
 CTAtileK = 4
 
 WARPtileM = 2
-WARPtileN = 16
+WARPtileN = 32
 
-nsplitK = 8
+nsplitK = 2
 
 # # Tile sizes for the epilogue
 #eCTAtileM = 128-
