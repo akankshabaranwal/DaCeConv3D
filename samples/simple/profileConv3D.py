@@ -77,7 +77,7 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
-batchsizes = [8]
+batchsizes = [4]
 
 if (verify and compareprof):
     sys.exit("!!! ERROR: Some pycuda context issue when both verif and compareprof are called together")
@@ -270,7 +270,7 @@ for layern in range(currlayer, lastlayer):
         if(layern!=0):
             print("WARN: For except layer 0 preselecting implicit gemm so convolution algo is 5")
             convolution_algo = 5
-        convolution_algo = 1
+        #convolution_algo = 1
         # Code for verification
         if verify:
             if(useCudnn):

@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include "hip/hip_runtime.h"
 #include <vector>
+#include "roctracer_ext.h"
+// roctx header file
+#include <roctx.h>
+extern "C"
+void roctracer_mark(const char* str);
 
 #define HIP_ASSERT(x) (assert(x==hipSuccess))
 using namespace std;
@@ -139,11 +144,19 @@ int main()
     selectedAlgo = perfResults->fwd_algo;
     //selectedAlgo = miopenConvolutionFwdAlgoGEMM;
     //std::cout<<perfResults->fwd_algo;
+
+    roctracer_mark("Before mark kernel");
+    roctxMark("before hipLaunchKernel");
+    int rangeId = roctxRangeStart("hipLaunchKernel range");
+    roctxRangePush("hipLaunchKernel");
     CHECK_MIOPEN_ERROR(miopenConvolutionForward(miopen_h, &alpha, 
                                                 in_desc, in_data, 
                                                 filt_desc, filt_data,
                                                 conv_desc, selectedAlgo, 
                                                 &beta, out_desc, out_data,
                                                 d_workspace, ws_size));
+    roctracer_mark("after HIP LaunchKernel");
+    roctxMark("after hipLaunchKernel");
+
     return 0;
 }
