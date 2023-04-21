@@ -11,6 +11,7 @@ daceml/
 samples/simple/results/
 samples/simple/profileresults/
 samples/simple/outputplots/
+samples/convolution/outputplots/
 samples/simple/pytorch/
 .soap/
 cutlass/
