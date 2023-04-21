@@ -69,7 +69,7 @@ currlayer = args.currlayer
 enableplots = args.enableplots
 lastlayer = min(args.lastlayer, convparams.shape[0])
 
-batchsizes = [8]
+batchsizes = [16]
 
 if (verify and compareprof):
     sys.exit("!!! ERROR: Some pycuda context issue when both verif and compareprof are called together")
@@ -266,7 +266,7 @@ for layern in range(currlayer, lastlayer):
             else:
                 diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
 
-            if(diff<=1e-4): #TODO: Check if the threshold should be reduced
+            if(diff<=1e-5): #TODO: Check if the threshold should be reduced
                 print(f"Verification successfull")
             else:
                 sys.exit(f"!!! ERROR: Incorrect verification layer number {layern}")

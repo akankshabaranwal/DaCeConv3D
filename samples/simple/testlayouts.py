@@ -123,9 +123,9 @@ def dace_conv3d(Input: dtype[d_inchannels, d_batchsize, d_outdepth+d_kdim-1, d_o
 
 batchsize = 1
 
-in_depth = 514
-in_height = 514
-in_width = 514
+in_depth = 258
+in_height = 258
+in_width = 258
 
 kdim = 3
 
@@ -133,8 +133,8 @@ out_depth = in_depth - kdim + 1
 out_height = in_depth - kdim + 1
 out_width = in_depth - kdim + 1
 
-inchannels = 1
-outchannels = 16
+inchannels = 16
+outchannels = 32
 
 d_input = torch.rand(batchsize, inchannels, in_depth, in_height, in_width).cuda()
 d_kernel = torch.rand(outchannels, inchannels, kdim, kdim, kdim).cuda()
