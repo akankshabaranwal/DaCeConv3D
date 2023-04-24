@@ -54,6 +54,6 @@ Scripts for the plots.
 3. `plotRuntimebreakdown.py`: To plot the breakdown of different layers.
 4. `stresstest.py`: Code used for stress test.
 
-## DaCe config
+## DaCe config files
 1. For AMD: amd.dace.conf
 2. For CUDA: cuda.dace.conf

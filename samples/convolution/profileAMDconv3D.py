@@ -7,14 +7,10 @@ import statistics
 import sys
 import glob
 
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-useCudnn = 1
-=======
 useCudnn = 0
 useMIOpen = 1
 
 #TODO: If script gets hung then remove calls to miopendestroydescinoutfilt and rerun. Restarting ault also helps
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
 
 if(useCudnn):
     import pycuda.autoinit
@@ -92,37 +88,9 @@ torch.cuda.empty_cache()
 selectMethod = args.implementation
 
 if selectMethod == 'implicitGemmNCDHWmatmul':
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-    from nv_impl.implicitGemmNCDHWmatmul import *
-=======
     from amd_impl.implicitGemmNCDHWmatmul import *
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
     layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNCDHWindexv0dace':
-    from nv_impl.implicitGemmNCDHWindexv0dace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmdace':
-    from nv_impl.implicitGemmdace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmTileddace':
-    from nv_impl.implicitGemmTileddace import *
-    layout = 'NDHWC'
-elif selectMethod == 'implicitGemmWarpTileddace':
-    from nv_impl.implicitGemmWarpTileddace import *
-    layout = 'NDHWC'
 elif selectMethod == 'implicitGemmNCDHWdace':
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-    from nv_impl.implicitGemmNCDHWdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNCDHWsoap':
-    from nv_impl.implicitGemmNCDHWsoap import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmsplitKdace':
-    from nv_impl.implicitGemmsplitKdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'implicitGemmNoIndexdace':
-    from nv_impl.implicitGemmNoIndexdace import *
-=======
     from amd_impl.implicitGemmNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWorig':
@@ -139,36 +107,8 @@ elif selectMethod == 'implicitGemmsplitKdace':
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNoIndexdace':
     from amd_impl.implicitGemmNoIndexdace import *
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
     layout = 'NCDHW'
-elif selectMethod == 'implicitGemmTiledonlydace':
-    from nv_impl.implicitGemmTiledonlydace import *
-    layout = 'NDHWC'
 elif selectMethod == 'directConvNCDHWdace':
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-    from nv_impl.directConvNCDHWdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWtileIC':
-    from nv_impl.directConvNCDHWtileIC import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWIOdace':
-    from nv_impl.directConvNCDHWIOdace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWnobuffer':
-    from nv_impl.directConvNCDHWnobuffer import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCtileddace':
-    from nv_impl.directConvNDHWCtileddace import *
-    layout = 'NDHWC'
-elif selectMethod == 'directConvNCDHWtileddace':
-    from nv_impl.directConvNCDHWtileddace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWzerodace':
-    from nv_impl.directConvNCDHWzerodace import *
-    layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWmergeddace':
-    from nv_impl.directConvNCDHWmergeddace import *
-=======
     from amd_impl.directConvNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
@@ -188,17 +128,12 @@ elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
     from amd_impl.directConvNCDHWmergeddace import *
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
     layout = 'NCDHW'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
 
 if(not(useCudnn) and layout!='NCDHW'):
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-    sys.exit("!!ERROR: Pytorch supports only NCHDW layout")
-=======
     sys.exit("!!ERROR: Pytorch and MIOpen supports only NCHDW layout")
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
 
 outdir = f'./outputplots/out_{selectMethod}_{batchsizes[0]}'
 if not os.path.exists(outdir):
@@ -239,25 +174,16 @@ if(useCudnn):
     conv_desc, cudnn_context, tensor_format, convolution_mode, convolution_algo, alpha, beta, c_int_p, outdimsinit, data_type, tensor_dim, conv_dim = cudnn_init(pad, stride, dil, layout)
     # cudnn variable parameters init, these change across different layers and are called multiple times
     cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims,  filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size = cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d_input,  d_kernel, d_output, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim, tensor_format)
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-else:
-    ref_op = F.conv3d(t_input, t_kernel, stride=1, padding='valid')
-=======
 
 if(useMIOpen):
     # Initializing miopen
     miopen_context, data_type, tensor_dim, conv_dim, convolution_mode, conv_desc = miopen_init(pad, stride, dil)
     # Initializing input data pointer   
     in_desc, in_data, filt_desc, filt_data, out_desc, out_data, out_data_ptr, outdims, out_bytes, out_data_verify, ws_size, workspace, convolution_algo = miopensetlayerdesc(miopen_context, conv_desc, d_input, d_kernel, batchsize, kdim, inchannels, indepth, inheight, inwidth, outchannels, data_type, tensor_dim)
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
 
 
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-    optim_dace = load_precompiled_sdfg(f'/users/abaranwa/dacelocal/.dacecache/{selectMethod}_dace_conv3d')
-=======
 if loadprecompiled:
     optim_dace = load_precompiled_sdfg(f'/users/abaranwa/amdoutput/.dacecache/{selectMethod}_dace_conv3d')
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
 else:    
     sdfg_fun: dace.SDFG = dace_conv3d.to_sdfg(d_input, d_kernel, d_output)
     optimize_for_gpu(sdfg_fun)
@@ -320,8 +246,7 @@ for layern in range(currlayer, lastlayer):
         layersummary = {}
         t_input = d_input.clone()
         t_kernel = d_kernel.clone()
-        t_output = d_output.clone()
-        
+
         inchannels = np.int32(inchannels)
         indepth = np.int32(indepth)
         inheight = np.int32(inheight)
@@ -373,14 +298,9 @@ for layern in range(currlayer, lastlayer):
                 diff = np.linalg.norm((d_output.cpu() - out_data_verify.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
             else:
                 diff = np.linalg.norm((d_output.cpu() - ref_op.cpu())) / (batchsize * outchannels * outdepth * outheight * outwidth )
-<<<<<<< HEAD:samples/convolution/profileConv3D.py
-
-            if(diff<=1e-5): #TODO: Check if the threshold should be reduced
-=======
             
             print(diff)
             if(diff<=1e-4): #TODO: Check if the threshold should be reduced
->>>>>>> amd:samples/convolution/profileAMDconv3D.py
                 print(f"Verification successfull")
             else:
                 sys.exit(f"!!! ERROR: Incorrect verification layer number {layern}")
