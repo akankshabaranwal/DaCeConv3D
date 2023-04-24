@@ -2,7 +2,6 @@
 
 This folder contains all scripts and files used for the thesis "Optimizing GPU Convnets".
 
-
 ## Automated verification and benchmarking
 Main script for verification and runtime profiling on NVIDIA GPU is `profileNVConv3D.py` and for AMD GPU is `profileAMDConv3D.py`
 
@@ -23,7 +22,7 @@ Main script for verification and runtime profiling on NVIDIA GPU is `profileNVCo
 `python profileNVConv3D.py --implementation directConvNCDHWtileIC --currlayer 2 --lastlayer 3 --verify`
 
 ## Available DaCe implementations
-In the folder *nv_impl*. The implementations included in the report are:
+The folder *nv_impl* has implementations for NVIDIA GPU and the folder *amd_impl* has implementations for AMD GPU. The below listed implementations have been included in the report:
 1. Implicit GEMM algorithm with auto-optimize: `implicitGemmdace`
 2. Implicit GEMM algorithm with tiling only: `implicitGemmTiledonlydace`
 3. Implicit GEMM algorithm with buffering + tiling: `implicitGemmWarpTileddace`
@@ -43,6 +42,8 @@ Available datasets are in the folder convparams. Only CosmoFlow is runnable.
 3. `libhip.py` has the Python bindings for HIP for the required 3D convolution functions.
 4. `cudnn_conv.cu`, `cudnn_nhwc.cu` has example on using 3D convolution in cuDNN
 5. `miopen_conv.cpp` has example on using 3D convolution in MIOpen
+5. `cudnnConv.py` has wrapper functions for libcudnn for 3D convolution
+5. `miopenConv.py` has wrapper functions for libmiopen for 3D convolution
 6. `examplecudnn.py` is an example on using the libcudnn Python bindings.
 7. `examplemiopen.py` is an example on using the libmiopen Python bindings.
 8. `convutils.py` has the supporting utilities needed in profileConv3D.py
@@ -55,5 +56,5 @@ Scripts for the plots.
 4. `stresstest.py`: Code used for stress test.
 
 ## DaCe config files
-1. For AMD: amd.dace.conf
-2. For CUDA: cuda.dace.conf
+1. For AMD: `amd.dace.conf`
+2. For CUDA: `cuda.dace.conf`

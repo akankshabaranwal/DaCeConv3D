@@ -11,7 +11,8 @@ useCudnn = 0
 useMIOpen = 1
 
 #TODO: If script gets hung then remove calls to miopendestroydescinoutfilt and rerun. Restarting ault also helps
-
+# If the script fails, set export MIOPEN_FIND_MODE to 1 and rerun
+ 
 if(useCudnn):
     import pycuda.autoinit
     from pycuda import gpuarray
