@@ -71,7 +71,7 @@ def cudnnsetlayerdesc(cudnn_context, outdimsinit, conv_desc, convolution_algo, d
     return cudnn_input, cudnn_kernel, cudnn_output, in_desc, in_data, in_data_g, out_desc, out_data, out_data_g, outdims, filt_desc, filt_data, filt_data_g, ws_ptr, ws_data, ws_size
 
 
-def destroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr):
+def cudnndestroydescinoutfilt(in_desc, out_desc, filt_desc, ws_ptr):
     ws_ptr = None
     libcudnn.cudnnDestroyTensorDescriptor(in_desc)
     libcudnn.cudnnDestroyTensorDescriptor(out_desc)

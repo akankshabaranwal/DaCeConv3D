@@ -40,7 +40,7 @@ int main()
         cudaGetDeviceCount(&numGPUs);
         std::cout << "Found " << numGPUs << " GPUs." << std::endl;
         cudaSetDevice(0); // use GPU0
-        int device; 
+        int device;
         struct cudaDeviceProp devProp;
         cudaGetDevice(&device);
         cudaGetDeviceProperties(&devProp, device);

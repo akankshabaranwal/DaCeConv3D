@@ -13,6 +13,7 @@ samples/simple/profileresults/
 samples/simple/outputplots/
 samples/convolution/outputplots/
 samples/simple/pytorch/
+samples/simple/profileroutput/
 .soap/
 cutlass/
 

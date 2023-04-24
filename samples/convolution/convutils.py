@@ -152,6 +152,7 @@ def addlabels(x,y):
         y[i] =round(y[i],2)
         plt.text(i,y[i],y[i])
 
+
 def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, paramscsv, outdir, median_dace, median_ref, layer_names, summary):
     nrow = 2
     ncol = lastlayer-currlayer
@@ -229,7 +230,8 @@ def createplots(enableplots, lastlayer, currlayer, warmupiter, totaliter, params
             br2 = [x + barWidth for x in br1]
             
             # Make the plot
-            plt.bar(br1, median_ref, color ='pink', width = barWidth, edgecolor ='grey', label ='cudnn')
+            plt.bar(br1, median_ref, color ='pink', width = barWidth, edgecolor ='grey', label ='ref')
+
             plt.bar(br2, median_dace, color ='skyblue', width = barWidth, edgecolor ='grey', label ='dace')
             addlabels(br1, median_ref)
             addlabels(br2, median_dace)
