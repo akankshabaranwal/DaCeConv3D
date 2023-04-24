@@ -88,46 +88,46 @@ torch.cuda.empty_cache()
 selectMethod = args.implementation
 
 if selectMethod == 'implicitGemmNCDHWmatmul':
-    from implicitGemmNCDHWmatmul import *
+    from amd_impl.implicitGemmNCDHWmatmul import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWdace':
-    from implicitGemmNCDHWdace import *
+    from amd_impl.implicitGemmNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWorig':
-    from implicitGemmNCDHWorig import *
+    from amd_impl.implicitGemmNCDHWorig import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWtileM1':
-    from implicitGemmNCDHWtileM1 import *
+    from amd_impl.implicitGemmNCDHWtileM1 import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWsoap':
-    from implicitGemmNCDHWsoap import *
+    from amd_impl.implicitGemmNCDHWsoap import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmsplitKdace':
-    from implicitGemmsplitKdace import *
+    from amd_impl.implicitGemmsplitKdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNoIndexdace':
-    from implicitGemmNoIndexdace import *
+    from amd_impl.implicitGemmNoIndexdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWdace':
-    from directConvNCDHWdace import *
+    from amd_impl.directConvNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
-    from directConvNCDHWIOdace import *
+    from amd_impl.directConvNCDHWIOdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWnobuffer': # Fast code with no buffers
-    from directConvNCDHWnobuffer import *
+    from amd_impl.directConvNCDHWnobuffer import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNDHWCtileddace': # Slow code with explicit buffers
-    from directConvNDHWCtileddace import *
+    from amd_impl.directConvNDHWCtileddace import *
     layout = 'NDHWC'
 elif selectMethod == 'directConvNCDHWtileddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWtileddace import *
+    from amd_impl.directConvNCDHWtileddace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWzerodace import *
+    from amd_impl.directConvNCDHWzerodace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWmergeddace import *
+    from amd_impl.directConvNCDHWmergeddace import *
     layout = 'NCDHW'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
