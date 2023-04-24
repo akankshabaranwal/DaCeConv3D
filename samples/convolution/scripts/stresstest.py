@@ -1,7 +1,6 @@
 import dace
 import numpy as np
 from dace import dtypes
-from convutils import find_map_by_param
 import torch 
 from daceml.testing.profiling import time_funcs, print_time_statistics
 import torch.nn.functional as F

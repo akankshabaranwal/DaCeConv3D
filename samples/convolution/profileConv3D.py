@@ -80,58 +80,58 @@ torch.cuda.empty_cache()
 selectMethod = args.implementation
 
 if selectMethod == 'implicitGemmNCDHWmatmul':
-    from implicitGemmNCDHWmatmul import *
+    from nv_impl.implicitGemmNCDHWmatmul import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWindexv0dace':
-    from implicitGemmNCDHWindexv0dace import *
+    from nv_impl.implicitGemmNCDHWindexv0dace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmdace':
-    from implicitGemmdace import *
+    from nv_impl.implicitGemmdace import *
     layout = 'NDHWC'
 elif selectMethod == 'implicitGemmTileddace':
-    from implicitGemmTileddace import *
+    from nv_impl.implicitGemmTileddace import *
     layout = 'NDHWC'
 elif selectMethod == 'implicitGemmWarpTileddace':
-    from implicitGemmWarpTileddace import *
+    from nv_impl.implicitGemmWarpTileddace import *
     layout = 'NDHWC'
 elif selectMethod == 'implicitGemmNCDHWdace':
-    from implicitGemmNCDHWdace import *
+    from nv_impl.implicitGemmNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNCDHWsoap':
-    from implicitGemmNCDHWsoap import *
+    from nv_impl.implicitGemmNCDHWsoap import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmsplitKdace':
-    from implicitGemmsplitKdace import *
+    from nv_impl.implicitGemmsplitKdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmNoIndexdace':
-    from implicitGemmNoIndexdace import *
+    from nv_impl.implicitGemmNoIndexdace import *
     layout = 'NCDHW'
 elif selectMethod == 'implicitGemmTiledonlydace':
-    from implicitGemmTiledonlydace import *
+    from nv_impl.implicitGemmTiledonlydace import *
     layout = 'NDHWC'
 elif selectMethod == 'directConvNCDHWdace':
-    from directConvNCDHWdace import *
+    from nv_impl.directConvNCDHWdace import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWtileIC':
-    from directConvNCDHWtileIC import *
+    from nv_impl.directConvNCDHWtileIC import *
     layout = 'NCDHW'
 elif selectMethod == 'directConvNCDHWIOdace':
-    from directConvNCDHWIOdace import *
+    from nv_impl.directConvNCDHWIOdace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWnobuffer': # Fast code with no buffers
-    from directConvNCDHWnobuffer import *
+elif selectMethod == 'directConvNCDHWnobuffer':
+    from nv_impl.directConvNCDHWnobuffer import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNDHWCtileddace': # Slow code with explicit buffers
-    from directConvNDHWCtileddace import *
+elif selectMethod == 'directConvNDHWCtileddace':
+    from nv_impl.directConvNDHWCtileddace import *
     layout = 'NDHWC'
-elif selectMethod == 'directConvNCDHWtileddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWtileddace import *
+elif selectMethod == 'directConvNCDHWtileddace':
+    from nv_impl.directConvNCDHWtileddace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWzerodace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWzerodace import *
+elif selectMethod == 'directConvNCDHWzerodace':
+    from nv_impl.directConvNCDHWzerodace import *
     layout = 'NCDHW'
-elif selectMethod == 'directConvNCDHWmergeddace': # Code with naive merge and sdfg optimization
-    from directConvNCDHWmergeddace import *
+elif selectMethod == 'directConvNCDHWmergeddace':
+    from nv_impl.directConvNCDHWmergeddace import *
     layout = 'NCDHW'
 else:
     sys.exit("!!ERROR: Select valid dace implementation")
